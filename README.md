@@ -10,7 +10,7 @@ orgs that provides weekly insights on who contributed what where.
 
 ### MacOS
 `
-`~/Library/Application Support/rs.org-pulse/default-config.toml`
+`~/Library/Application\ Support/rs.org-pulse/default-config.toml`
 
 ## Who is this for
 
