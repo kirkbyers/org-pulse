@@ -8,9 +8,9 @@ orgs that provides weekly insights on who contributed what where.
 
 ## Config
 
-### MacOS
-`
-`~/Library/Application\ Support/rs.org-pulse/default-config.toml`
+### Settings
+
+a `config.toml` is generated in the directory the application is ran in.
 
 ### Github Token
 
