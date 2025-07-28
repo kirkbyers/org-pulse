@@ -12,6 +12,14 @@ orgs that provides weekly insights on who contributed what where.
 `
 `~/Library/Application\ Support/rs.org-pulse/default-config.toml`
 
+### Github Token
+
+Use `gh` to set github token to use
+
+```bash
+$ export GITHUB_TOKEN=$(gh auth token)
+```
+
 ## Who is this for
 
 Members of a growing engineering org or startup
