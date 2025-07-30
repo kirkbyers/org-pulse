@@ -1,11 +1,11 @@
 use std::env;
 use chrono::{Duration, Utc};
 use octocrab::{params::{repos::Sort, Direction}, Octocrab};
+use org_pulse::github::{self, get_org_repos_by_page, get_repo_commits};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 const CONFIG_APTH: &str = "./config.toml";
-const COMMITS_PER_PAGE: u8 = 200;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct AppConfig {
@@ -54,41 +54,14 @@ async fn main() -> anyhow::Result<()> {
         let mut page: u32 = 1;
         let seven_days_ago = Utc::now() - Duration::days(7);
         while results_count == 50 {
-            let repos = octocrab.orgs(&org.organization.login)
-                .list_repos()
-                .sort(Sort::Updated)
-                .direction(Direction::Descending)
-                .per_page(results_count)
-                .page(page)
-                .send()
-                .await?;
+            let repos = get_org_repos_by_page(&octocrab, &org.organization.login, &results_count, &page).await?;
             results_count = 0;
             for repo in repos {
                 results_count += 1;
-                let repo_details = octocrab.repos(&org.organization.login, &repo.name);
-                let commits_this_week = match repo_details
-                    .list_commits()
-                    .since(seven_days_ago.clone())
-                    .branch("main")
-                    .per_page(COMMITS_PER_PAGE)
-                    .send()
-                    .await {
-                        Ok(val) => val,
-                        Err(octocrab::Error::GitHub { source, .. }) if source.status_code.as_str() == "404" => {
-                                // If master isn't 
-                                repo_details
-                                    .list_commits()
-                                    .since(seven_days_ago.clone())
-                                    .branch("master")
-                                    .per_page(COMMITS_PER_PAGE)
-                                    .send()
-                                    .await?
-                        },
-                        Err(e) => {
-                            println!("Unknown error for {:?}: {:?}", &repo.full_name.unwrap_or_default(), &e);
-                            continue;
-                        },
-                    };
+                let commits_this_week = match get_repo_commits(&octocrab, &org.organization.login, &repo.name, seven_days_ago).await {
+                    Ok(val) => val,
+                    Err(_e) => continue
+                };
                 let mut commit_counter = 0;
                 for _commit in commits_this_week {
                     commit_counter += 1;
