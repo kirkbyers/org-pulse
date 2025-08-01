@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use octocrab::{models::{orgs::MembershipInvitation, repos::RepoCommit, Repository}, params::{repos::Sort, Direction}, Octocrab, Page};
+use octocrab::{models::{orgs::MembershipInvitation, pulls::PullRequest, repos::RepoCommit, Repository}, Octocrab, Page};
 use anyhow::Result;
 
 const COMMITS_PER_PAGE: u8 = 200;
@@ -43,11 +43,38 @@ impl Github {
             };
     }
 
+    pub async fn get_repo_prs (self: &Self, org: &str, repo: &str, since: DateTime<Utc>) -> Result<Vec<PullRequest>> {
+        let repo_details = self.client.pulls(org, repo)
+            .list()
+            .state(octocrab::params::State::All)
+            .sort(octocrab::params::pulls::Sort::Updated)
+            .direction(octocrab::params::Direction::Descending)
+            .base("main")
+            .per_page(COMMITS_PER_PAGE)
+            .send()
+            .await?;
+        let mut res = vec![];
+
+        for detail in repo_details {
+            match detail.merged_at {
+                Some(dt) => {
+                    if dt < since {
+                        return Ok(res)
+                    }
+                    res.push(detail);
+                },
+                None => continue
+            }
+        }
+
+        Ok(res)
+    }
+
     pub async fn get_org_repos_by_page(self: &Self, org: &str, per_page: &u8, page: &u32) -> Result<Page<Repository>> {
         return self.client.orgs(org)
                     .list_repos()
-                    .sort(Sort::Updated)
-                    .direction(Direction::Descending)
+                    .sort(octocrab::params::repos::Sort::Updated)
+                    .direction(octocrab::params::Direction::Descending)
                     .per_page(*per_page)
                     .page(*page)
                     .send().await.map_err(|e| e.into())

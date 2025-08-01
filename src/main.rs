@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
                 let mut repo_scrape = Scrape::new(&org.organization.login, &repo.name, &cfg.ignored_user_patterns);
                 results_count += 1;
 
-                let commits_this_week = match gh.get_repo_commits(&org.organization.login, &repo.name, seven_days_ago).await {
+                let commits_this_week = match gh.get_repo_commits(&org.organization.login, &repo.name, seven_days_ago.clone()).await {
                     Ok(val) => val,
                     Err(_e) => continue
                 };
@@ -41,8 +41,11 @@ async fn main() -> anyhow::Result<()> {
                 if commit_counter == 0 {
                     break;
                 }
-                println!("{:#?}", repo_scrape);
 
+                let _repo_prs = gh.get_repo_prs(&org.organization.login, &repo.name, seven_days_ago.clone()).await?;
+                // TODO: Process PRs
+
+                println!("{:#?}", repo_scrape);
             }
             page += 1;
         }
