@@ -1,6 +1,6 @@
 use std::env;
 use chrono::{Duration, Utc};
-use org_pulse::github::Github;
+use org_pulse::{github::Github, scrape::Scrape};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -53,19 +53,24 @@ async fn main() -> anyhow::Result<()> {
             let repos = gh.get_org_repos_by_page(&org.organization.login, &results_count, &page).await?;
             results_count = 0;
             for repo in repos {
+                let mut repo_scrape = Scrape::new(&org.organization.login, &repo.name);
                 results_count += 1;
+
                 let commits_this_week = match gh.get_repo_commits(&org.organization.login, &repo.name, seven_days_ago).await {
                     Ok(val) => val,
                     Err(_e) => continue
                 };
+
+                // Process each commit for the week in the repo
                 let mut commit_counter = 0;
-                for _commit in commits_this_week {
+                for commit in commits_this_week {
                     commit_counter += 1;
+                    repo_scrape.process_commit(&commit);
                 }
                 if commit_counter == 0 {
                     break;
                 }
-                println!("{} commits in {} this week", &commit_counter, &repo.full_name.unwrap_or_default());
+                println!("{:#?}", repo_scrape);
 
             }
             page += 1;

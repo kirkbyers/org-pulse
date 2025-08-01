@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use octocrab::{models::{orgs::MembershipInvitation, repos::RepoCommit, Repository}, params::{repos::Sort, Direction}, repos::RepoHandler, Octocrab, Page};
-use anyhow::{Error, Result};
+use octocrab::{models::{orgs::MembershipInvitation, repos::RepoCommit, Repository}, params::{repos::Sort, Direction}, Octocrab, Page};
+use anyhow::Result;
 
 const COMMITS_PER_PAGE: u8 = 200;
 
@@ -26,7 +26,7 @@ impl Github {
             .await {
                 Ok(val) => Ok(val),
                 Err(octocrab::Error::GitHub { source, .. }) if source.status_code.as_str() == "404" => {
-                        // If master isn't 
+                        // If main doesn't exist
                         repo_details
                             .list_commits()
                             .since(since)
