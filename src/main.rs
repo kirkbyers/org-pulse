@@ -1,7 +1,6 @@
 use std::env;
 use chrono::{Duration, Utc};
-use octocrab::{params::{repos::Sort, Direction}, Octocrab};
-use org_pulse::github::{self, get_org_repos_by_page, get_repo_commits};
+use org_pulse::github::Github;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -37,12 +36,9 @@ async fn main() -> anyhow::Result<()> {
     let cfg: AppConfig = confy::load_path(CONFIG_APTH)?;
 
     let github_token:String = env::var("GITHUB_TOKEN")?;
-    let octocrab = Octocrab::builder().personal_token(github_token).build()?;
+    let gh = Github::new(&github_token);
 
-    let orgs = octocrab.current()
-        .list_org_memberships_for_authenticated_user()
-        .send()
-        .await?;
+    let orgs = gh.get_orgs().await?;
     let org_ignore_regex = Regex::new(&format!(r"{}", &cfg.ignored_org_pattern))?;
     for org in orgs {
         if let Some(_mat) = org_ignore_regex.find(&org.organization.login) {
@@ -54,11 +50,11 @@ async fn main() -> anyhow::Result<()> {
         let mut page: u32 = 1;
         let seven_days_ago = Utc::now() - Duration::days(7);
         while results_count == 50 {
-            let repos = get_org_repos_by_page(&octocrab, &org.organization.login, &results_count, &page).await?;
+            let repos = gh.get_org_repos_by_page(&org.organization.login, &results_count, &page).await?;
             results_count = 0;
             for repo in repos {
                 results_count += 1;
-                let commits_this_week = match get_repo_commits(&octocrab, &org.organization.login, &repo.name, seven_days_ago).await {
+                let commits_this_week = match gh.get_repo_commits(&org.organization.login, &repo.name, seven_days_ago).await {
                     Ok(val) => val,
                     Err(_e) => continue
                 };
