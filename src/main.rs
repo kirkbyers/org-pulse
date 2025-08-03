@@ -13,7 +13,6 @@ async fn main() -> anyhow::Result<()> {
     let org_ignore_regex = Regex::new(&format!(r"{}", &cfg.ignored_org_pattern))?;
     for org in orgs {
         if let Some(_mat) = org_ignore_regex.find(&org.organization.login) {
-            println!("Skipping {}", &org.organization.login);
             continue;
         }
 
@@ -43,7 +42,9 @@ async fn main() -> anyhow::Result<()> {
                 }
 
                 let _repo_prs = gh.get_repo_prs(&org.organization.login, &repo.name, seven_days_ago.clone()).await?;
-                // TODO: Process PRs
+                for pr in _repo_prs {
+                    let _ = repo_scrape.process_pr(&pr);
+                }
 
                 println!("{:#?}", repo_scrape);
             }

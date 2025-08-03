@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use octocrab::{models::{orgs::MembershipInvitation, pulls::PullRequest, repos::RepoCommit, Repository}, Octocrab, Page};
+use octocrab::{models::{orgs::MembershipInvitation, pulls::PullRequest, repos::RepoCommit, Repository}, FromResponse, Octocrab, Page};
 use anyhow::Result;
 
 const COMMITS_PER_PAGE: u8 = 200;
@@ -61,7 +61,8 @@ impl Github {
                     if dt < since {
                         return Ok(res)
                     }
-                    res.push(detail);
+                    let full_res: PullRequest = FromResponse::from_response(self.client._get(&detail.url).await?).await?;
+                    res.push(full_res);
                 },
                 None => continue
             }
