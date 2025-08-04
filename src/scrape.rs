@@ -4,6 +4,7 @@ use octocrab::{models::{pulls::PullRequest, repos::RepoCommit}};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
+use sqlx::SqlitePool;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Scrape {
@@ -88,4 +89,7 @@ impl ScrapeContributor {
     pub fn new(user_name: &str) -> Self {
         ScrapeContributor { username: user_name.to_string(), commits: 0, lines: 0 }
     }
+}
+
+fn create_org(pool: &SqlitePool) {
 }

@@ -10,4 +10,5 @@ confy = "1.0.0"
 octocrab = "0.44.1"
 regex = "1.11.1"
 serde = "1.0.219"
+sqlx = { version = "0.8.6", features = ["chrono", "macros", "migrate", "runtime-tokio", "sqlite", "uuid"] }
 tokio = { version = "1.47.0", features = ["full"] }

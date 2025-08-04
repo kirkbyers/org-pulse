@@ -1,10 +1,13 @@
 use std::env;
 use chrono::{Duration, Utc};
-use org_pulse::{config::get_config, github::Github, scrape::Scrape};
+use org_pulse::{config::get_config, db::new_pool, github::Github, scrape::Scrape};
 use regex::Regex;
+use sqlx::migrate;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let db_pool = new_pool().await?;
+    migrate!().run(&db_pool).await?;
     let cfg = get_config().unwrap();
     let github_token:String = env::var("GITHUB_TOKEN")?;
     let gh = Github::new(&github_token);
