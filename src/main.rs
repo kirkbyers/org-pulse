@@ -26,7 +26,8 @@ async fn main() -> anyhow::Result<()> {
             let repos = gh.get_org_repos_by_page(&org.organization.login, &results_count, &page).await?;
             results_count = 0;
             for repo in repos {
-                let mut repo_scrape = Scrape::new(&org.organization.login, &repo.name, &cfg.ignored_user_patterns);
+                let db_conn = db_pool.acquire().await?;
+                let mut repo_scrape = Scrape::new(db_conn, &org.organization.login, &repo.name, &cfg.ignored_user_patterns).await?;
                 results_count += 1;
 
                 let commits_this_week = match gh.get_repo_commits(&org.organization.login, &repo.name, seven_days_ago.clone()).await {
