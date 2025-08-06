@@ -49,36 +49,210 @@ impl Org {
 }
 
 pub struct Contributor {
-    pub id: u64,
-    pub name: String,
+    pub id: i64,
+    pub username: String,
+}
+
+impl Contributor {
+    pub async fn get(pool_con: &mut PoolConn, id: &i64) -> Result<Contributor> {
+        let contributor_row: (i64, String) = query_as("
+            SELECT id, username
+            FROM contributors c
+            WHERE c.id = $1 
+            LIMIT 1;
+        ").bind(id).fetch_one(pool_con.as_mut()).await?;
+
+        Ok(Contributor {
+            id: contributor_row.0,
+            username: contributor_row.1
+        })
+    }
+
+    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+        let _res = query("
+            UPDATE contributors
+            set username = $1
+            where id = $2
+        ")
+            .bind(&self.username)
+            .bind(self.id)
+            .execute(pool_con.as_mut())
+            .await?;
+        Ok(())
+    }
 }
 
 pub struct Repo {
-    pub id: u64,
+    pub id: i64,
     pub name: String,
     pub org: Org,
 }
 
+impl Repo {
+    pub async fn get(pool_con: &mut PoolConn, id: &i64) -> Result<Repo> {
+        let repo_row: (i64, String, i64) = query_as("
+            SELECT r.id, r.name, r.org_id
+            FROM repos r
+            WHERE r.id = $1 
+            LIMIT 1;
+        ").bind(id).fetch_one(pool_con.as_mut()).await?;
+
+        let org = Org::get(pool_con, &repo_row.2).await?;
+
+        Ok(Repo {
+            id: repo_row.0,
+            name: repo_row.1,
+            org
+        })
+    }
+
+    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+        let _res = query("
+            UPDATE repos
+            set name = $1, org_id = $2
+            where id = $3
+        ")
+            .bind(&self.name)
+            .bind(self.org.id)
+            .bind(self.id)
+            .execute(pool_con.as_mut())
+            .await?;
+        Ok(())
+    }
+}
+
 pub struct Scrape {
-    pub id: u64,
+    pub id: i64,
     pub start_dt: DateTime<Utc>,
     pub end_dt: DateTime<Utc>,
 }
 
+impl Scrape {
+    pub async fn get(pool_con: &mut PoolConn, id: &i64) -> Result<Scrape> {
+        let scrape_row: (i64, DateTime<Utc>, DateTime<Utc>) = query_as("
+            SELECT id, start_dt, end_dt
+            FROM scrapes s
+            WHERE s.id = $1 
+            LIMIT 1;
+        ").bind(id).fetch_one(pool_con.as_mut()).await?;
+
+        Ok(Scrape {
+            id: scrape_row.0,
+            start_dt: scrape_row.1,
+            end_dt: scrape_row.2
+        })
+    }
+
+    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+        let _res = query("
+            UPDATE scrapes
+            set start_dt = $1, end_dt = $2
+            where id = $3
+        ")
+            .bind(&self.start_dt)
+            .bind(&self.end_dt)
+            .bind(self.id)
+            .execute(pool_con.as_mut())
+            .await?;
+        Ok(())
+    }
+}
+
 pub struct RepoScrape {
-    pub id: u64,
+    pub id: i64,
     pub scrape: Scrape,
     pub org: Org,
     pub repo: Repo,
-    pub commits: u64,
-    pub prs: u64,
-    pub lines: u64,
+    pub commits: i64,
+    pub prs: i64,
+    pub lines: i64,
+}
+
+impl RepoScrape {
+    pub async fn get(pool_con: &mut PoolConn, id: &i64) -> Result<RepoScrape> {
+        let repo_scrape_row: (i64, i64, i64, i64, i64, i64, i64) = query_as("
+            SELECT id, scrape_id, org_id, repo_id, commits, prs, lines
+            FROM repo_scrapes rs
+            WHERE rs.id = $1 
+            LIMIT 1;
+        ").bind(id).fetch_one(pool_con.as_mut()).await?;
+
+        let scrape = Scrape::get(pool_con, &repo_scrape_row.1).await?;
+        let org = Org::get(pool_con, &repo_scrape_row.2).await?;
+        let repo = Repo::get(pool_con, &repo_scrape_row.3).await?;
+
+        Ok(RepoScrape {
+            id: repo_scrape_row.0,
+            scrape,
+            org,
+            repo,
+            commits: repo_scrape_row.4,
+            prs: repo_scrape_row.5,
+            lines: repo_scrape_row.6
+        })
+    }
+
+    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+        let _res = query("
+            UPDATE repo_scrapes
+            set scrape_id = $1, org_id = $2, repo_id = $3, commits = $4, prs = $5, lines = $6
+            where id = $7
+        ")
+            .bind(self.scrape.id)
+            .bind(self.org.id)
+            .bind(self.repo.id)
+            .bind(self.commits)
+            .bind(self.prs)
+            .bind(self.lines)
+            .bind(self.id)
+            .execute(pool_con.as_mut())
+            .await?;
+        Ok(())
+    }
 }
 
 pub struct ContributorScrapes {
-    pub id: u64,
+    pub id: i64,
     pub repo_scrape: RepoScrape,
     pub contributor: Contributor,
-    pub commits: u64,
-    pub lines: u64,
+    pub commits: i64,
+    pub lines: i64,
+}
+
+impl ContributorScrapes {
+    pub async fn get(pool_con: &mut PoolConn, id: &i64) -> Result<ContributorScrapes> {
+        let contributor_scrapes_row: (i64, i64, i64, i64, i64) = query_as("
+            SELECT id, repo_scrape_id, contributor_id, commits, lines
+            FROM contributor_scrapes cs
+            WHERE cs.id = $1 
+            LIMIT 1;
+        ").bind(id).fetch_one(pool_con.as_mut()).await?;
+
+        let repo_scrape = RepoScrape::get(pool_con, &contributor_scrapes_row.1).await?;
+        let contributor = Contributor::get(pool_con, &contributor_scrapes_row.2).await?;
+
+        Ok(ContributorScrapes {
+            id: contributor_scrapes_row.0,
+            repo_scrape,
+            contributor,
+            commits: contributor_scrapes_row.3,
+            lines: contributor_scrapes_row.4
+        })
+    }
+
+    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+        let _res = query("
+            UPDATE contributor_scrapes
+            set repo_scrape_id = $1, contributor_id = $2, commits = $3, lines = $4
+            where id = $5
+        ")
+            .bind(self.repo_scrape.id)
+            .bind(self.contributor.id)
+            .bind(self.commits)
+            .bind(self.lines)
+            .bind(self.id)
+            .execute(pool_con.as_mut())
+            .await?;
+        Ok(())
+    }
 }
