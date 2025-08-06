@@ -195,6 +195,11 @@ impl Scrape {
             .bind(self.id)
             .execute(pool_con.as_mut())
             .await?;
+        
+        for repo_scrape in &self.repo_scrapes {
+            repo_scrape.save(pool_con).await?;
+        }
+        
         Ok(())
     }
 }
@@ -263,6 +268,11 @@ impl RepoScrape {
             .bind(self.id)
             .execute(pool_con.as_mut())
             .await?;
+        
+        for contributor_scrape in &self.contributor_scrapes {
+            contributor_scrape.save(pool_con).await?;
+        }
+        
         Ok(())
     }
 }
