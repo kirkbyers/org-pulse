@@ -125,6 +125,7 @@ pub struct Scrape {
     pub id: i64,
     pub start_dt: DateTime<Utc>,
     pub end_dt: DateTime<Utc>,
+    pub repo_scrapes: Vec<RepoScrape>,
 }
 
 impl Scrape {
@@ -136,10 +137,50 @@ impl Scrape {
             LIMIT 1;
         ").bind(id).fetch_one(pool_con.as_mut()).await?;
 
+        let repo_scrape_rows: Vec<(i64, i64, i64, i64, i64, i64, i64)> = query_as("
+            SELECT id, scrape_id, org_id, repo_id, commits, prs, lines
+            FROM repo_scrapes rs
+            WHERE rs.scrape_id = $1;
+        ").bind(id).fetch_all(pool_con.as_mut()).await?;
+
+        let mut repo_scrapes = Vec::new();
+        for row in repo_scrape_rows {
+            let org = Org::get(pool_con, &row.2).await?;
+            let repo = Repo::get(pool_con, &row.3).await?;
+            
+            let contributor_scrape_rows: Vec<(i64, i64, i64, i64, i64)> = query_as("
+                SELECT id, repo_scrape_id, contributor_id, commits, lines
+                FROM contributor_scrapes cs
+                WHERE cs.repo_scrape_id = $1;
+            ").bind(&row.0).fetch_all(pool_con.as_mut()).await?;
+
+            let mut contributor_scrapes = Vec::new();
+            for cs_row in contributor_scrape_rows {
+                let contributor = Contributor::get(pool_con, &cs_row.2).await?;
+                contributor_scrapes.push(ContributorScrapes {
+                    id: cs_row.0,
+                    contributor,
+                    commits: cs_row.3,
+                    lines: cs_row.4,
+                });
+            }
+
+            repo_scrapes.push(RepoScrape {
+                id: row.0,
+                org,
+                repo,
+                commits: row.4,
+                prs: row.5,
+                lines: row.6,
+                contributor_scrapes,
+            });
+        }
+
         Ok(Scrape {
             id: scrape_row.0,
             start_dt: scrape_row.1,
-            end_dt: scrape_row.2
+            end_dt: scrape_row.2,
+            repo_scrapes,
         })
     }
 
@@ -160,12 +201,12 @@ impl Scrape {
 
 pub struct RepoScrape {
     pub id: i64,
-    pub scrape: Scrape,
     pub org: Org,
     pub repo: Repo,
     pub commits: i64,
     pub prs: i64,
     pub lines: i64,
+    pub contributor_scrapes: Vec<ContributorScrapes>,
 }
 
 impl RepoScrape {
@@ -177,28 +218,43 @@ impl RepoScrape {
             LIMIT 1;
         ").bind(id).fetch_one(pool_con.as_mut()).await?;
 
-        let scrape = Scrape::get(pool_con, &repo_scrape_row.1).await?;
         let org = Org::get(pool_con, &repo_scrape_row.2).await?;
         let repo = Repo::get(pool_con, &repo_scrape_row.3).await?;
 
+        let contributor_scrape_rows: Vec<(i64, i64, i64, i64, i64)> = query_as("
+            SELECT id, repo_scrape_id, contributor_id, commits, lines
+            FROM contributor_scrapes cs
+            WHERE cs.repo_scrape_id = $1;
+        ").bind(id).fetch_all(pool_con.as_mut()).await?;
+
+        let mut contributor_scrapes = Vec::new();
+        for cs_row in contributor_scrape_rows {
+            let contributor = Contributor::get(pool_con, &cs_row.2).await?;
+            contributor_scrapes.push(ContributorScrapes {
+                id: cs_row.0,
+                contributor,
+                commits: cs_row.3,
+                lines: cs_row.4,
+            });
+        }
+
         Ok(RepoScrape {
             id: repo_scrape_row.0,
-            scrape,
             org,
             repo,
             commits: repo_scrape_row.4,
             prs: repo_scrape_row.5,
-            lines: repo_scrape_row.6
+            lines: repo_scrape_row.6,
+            contributor_scrapes,
         })
     }
 
     pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE repo_scrapes
-            set scrape_id = $1, org_id = $2, repo_id = $3, commits = $4, prs = $5, lines = $6
-            where id = $7
+            set org_id = $1, repo_id = $2, commits = $3, prs = $4, lines = $5
+            where id = $6
         ")
-            .bind(self.scrape.id)
             .bind(self.org.id)
             .bind(self.repo.id)
             .bind(self.commits)
@@ -213,7 +269,6 @@ impl RepoScrape {
 
 pub struct ContributorScrapes {
     pub id: i64,
-    pub repo_scrape: RepoScrape,
     pub contributor: Contributor,
     pub commits: i64,
     pub lines: i64,
@@ -228,25 +283,22 @@ impl ContributorScrapes {
             LIMIT 1;
         ").bind(id).fetch_one(pool_con.as_mut()).await?;
 
-        let repo_scrape = RepoScrape::get(pool_con, &contributor_scrapes_row.1).await?;
         let contributor = Contributor::get(pool_con, &contributor_scrapes_row.2).await?;
 
         Ok(ContributorScrapes {
             id: contributor_scrapes_row.0,
-            repo_scrape,
             contributor,
             commits: contributor_scrapes_row.3,
-            lines: contributor_scrapes_row.4
+            lines: contributor_scrapes_row.4,
         })
     }
 
     pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE contributor_scrapes
-            set repo_scrape_id = $1, contributor_id = $2, commits = $3, lines = $4
-            where id = $5
+            set contributor_id = $1, commits = $2, lines = $3
+            where id = $4
         ")
-            .bind(self.repo_scrape.id)
             .bind(self.contributor.id)
             .bind(self.commits)
             .bind(self.lines)
