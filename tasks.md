@@ -64,12 +64,16 @@
 - [x] Added repo counting and contributor organization mapping
 - [x] All functions return properly structured statistics data
 
-### Task 2.4: Data Loading
-- [ ] Implement data loading in App initialization
-- [ ] Load scrape list on startup
-- [ ] Default to latest scrape
-- [ ] Load initial org stats view
-- [ ] Test data loads correctly in TUI
+### Task 2.4: Data Loading ✅
+- [x] Implement data loading in App initialization
+- [x] Load scrape list on startup
+- [x] Default to latest scrape
+- [x] Load initial org stats view
+- [x] Test data loads correctly in TUI
+- [x] Added async App::new_with_data() constructor
+- [x] Integrated database queries with app initialization
+- [x] Added data refresh methods for view switching
+- [x] Proper error handling when no scrape data exists
 
 ## Phase 3: Core TUI Functionality
 
@@ -172,7 +176,7 @@
 
 ## Current Status
 - [x] Phase 1: Basic TUI Structure
-- [ ] Phase 2: Database Integration  
+- [x] Phase 2: Database Integration  
 - [ ] Phase 3: Core TUI Functionality
 - [ ] Phase 4: Sorting and Polish
 - [ ] Phase 5: Final Testing and Documentation

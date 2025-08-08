@@ -21,8 +21,21 @@ async fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Create app state
-    let mut app = App::new();
+    // Create app state and load data
+    let mut app = match App::new_with_data().await {
+        Ok(app) => app,
+        Err(e) => {
+            // Restore terminal before showing error
+            disable_raw_mode()?;
+            execute!(
+                io::stdout(),
+                LeaveAlternateScreen,
+                DisableMouseCapture
+            )?;
+            eprintln!("Failed to initialize app with data: {}", e);
+            return Ok(());
+        }
+    };
 
     // Run the TUI
     let result = run_tui(&mut terminal, &mut app).await;

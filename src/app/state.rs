@@ -1,4 +1,6 @@
 use crate::stats::{ViewData, ScrapeInfo};
+use crate::db::{new_pool, Scrape, get_org_stats, get_repo_stats, get_contributor_stats};
+use anyhow::Result;
 
 #[derive(Debug, Clone)]
 pub struct App {
@@ -56,6 +58,31 @@ impl App {
         Self::default()
     }
 
+    pub async fn new_with_data() -> Result<Self> {
+        let mut app = Self::default();
+        
+        // Initialize database connection and load data
+        let db_pool = new_pool().await?;
+        let mut db_conn = db_pool.acquire().await?;
+
+        // Load all available scrapes
+        app.scrapes = Scrape::list_all(&mut db_conn).await?;
+
+        // Default to latest scrape if available
+        if let Some(latest_scrape) = Scrape::get_latest(&mut db_conn).await? {
+            app.current_scrape = Some(latest_scrape.id);
+
+            // Load initial org stats for the latest scrape
+            let org_stats = get_org_stats(&mut db_conn, latest_scrape.id).await?;
+            app.data = ViewData::Orgs(org_stats);
+        } else {
+            // No scrapes available
+            app.data = ViewData::Error("No scrape data available. Run a scrape first.".to_string());
+        }
+
+        Ok(app)
+    }
+
     pub fn quit(&mut self) {
         self.should_quit = true;
     }
@@ -109,5 +136,40 @@ impl App {
             ViewData::Contributors(contributors) => contributors.len(),
             ViewData::Loading | ViewData::Error(_) => 0,
         }
+    }
+
+    pub async fn refresh_current_view_data(&mut self) -> Result<()> {
+        if let Some(scrape_id) = self.current_scrape {
+            let db_pool = new_pool().await?;
+            let mut db_conn = db_pool.acquire().await?;
+
+            match self.current_view {
+                View::Org => {
+                    let org_stats = get_org_stats(&mut db_conn, scrape_id).await?;
+                    self.data = ViewData::Orgs(org_stats);
+                }
+                View::Repo => {
+                    let repo_stats = get_repo_stats(&mut db_conn, scrape_id).await?;
+                    self.data = ViewData::Repos(repo_stats);
+                }
+                View::Contributors => {
+                    let contributor_stats = get_contributor_stats(&mut db_conn, scrape_id).await?;
+                    self.data = ViewData::Contributors(contributor_stats);
+                }
+            }
+        } else {
+            self.data = ViewData::Error("No scrape selected".to_string());
+        }
+        Ok(())
+    }
+
+    pub async fn switch_view_with_data(&mut self, view: View) -> Result<()> {
+        if self.current_view != view {
+            self.current_view = view;
+            self.selected_index = 0;
+            self.data = ViewData::Loading;
+            self.refresh_current_view_data().await?;
+        }
+        Ok(())
     }
 }
