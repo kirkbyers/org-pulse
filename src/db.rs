@@ -142,7 +142,7 @@ impl Repo {
         let result = query("
             INSERT INTO repos (name, org_id)
             VALUES ($1, $2)
-            ON CONFLICT(name) DO UPDATE SET org_id = org_id
+            ON CONFLICT(name, org_id) DO UPDATE SET name = name
             RETURNING id
         ")
             .bind(&name)
