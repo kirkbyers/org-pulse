@@ -94,12 +94,12 @@
 - [x] Add table headers and formatting
 - [x] Test all three views display correctly
 
-### Task 3.3: Navigation
-- [ ] Add selection index to app state
-- [ ] Implement up/down arrow and j/k navigation
-- [ ] Highlight selected row in tables
-- [ ] Handle wrap-around at list boundaries
-- [ ] Test navigation works in all views
+### Task 3.3: Navigation ✅
+- [x] Add selection index to app state
+- [x] Implement up/down arrow and j/k navigation
+- [x] Highlight selected row in tables
+- [x] Handle wrap-around at list boundaries
+- [x] Test navigation works in all views
 
 ### Task 3.4: Header and Footer
 - [ ] Add header with current scrape info and view name
@@ -187,15 +187,16 @@
 ## Resume Notes
 
 ### Current State (Last Updated)
-- **Completed**: Phases 1 & 2, Tasks 3.1 & 3.2
-- **Next Task**: Task 3.3: Navigation
-- **Key Achievement**: Complete table rendering with proper formatting and data display
+- **Completed**: Phases 1 & 2, Tasks 3.1, 3.2 & 3.3
+- **Next Task**: Task 3.4: Header and Footer
+- **Key Achievement**: Complete navigation system with row highlighting and keyboard controls
 
 ### Recent Progress Summary
 1. ✅ **Phase 1**: Complete TUI infrastructure (dependencies, structure, scraper separation, basic app)
 2. ✅ **Phase 2**: Complete database integration (architecture fixes, stats structures, TUI queries, data loading)  
 3. ✅ **Task 3.1**: Complete view management (o/r/u key switching with async data refresh)
 4. ✅ **Task 3.2**: Complete table rendering (proper ratatui tables with headers, formatting, and responsive layout)
+5. ✅ **Task 3.3**: Complete navigation system (up/down/j/k keys, row highlighting, wrap-around selection)
 
 ### Key Technical Implementation Details
 - **App Structure**: `src/app/` with state.rs, events.rs, ui.rs modules
@@ -227,6 +228,21 @@ get_contributor_stats(pool, scrape_id) -> Vec<ContributorStats>
 - Fixed ratatui 0.26 API compatibility (Table::new requires widths parameter)
 - Added proper error handling for data loading states
 - All table rendering functions now extract data from ViewData enum correctly
+
+### Task 3.3 Implementation Notes ✅
+**Completed Features:**
+- ✅ **Selection State**: `selected_index` field already existed in App struct with proper initialization
+- ✅ **Keyboard Navigation**: Up/Down arrow keys and j/k Vim-style navigation implemented in events.rs
+- ✅ **Visual Feedback**: Selected rows highlighted with dark gray background and white text
+- ✅ **Wrap-around**: Navigation wraps from bottom to top and top to bottom seamlessly
+- ✅ **Multi-view Support**: Navigation works consistently across Organizations, Repositories, and Contributors views
+- ✅ **Footer Update**: Added navigation hints (↑↓/j/k: Navigate) to footer for user guidance
+
+**Technical Implementation:**
+- Row highlighting uses `enumerate()` to track row index and applies styling conditionally
+- Selection state resets to 0 when switching views for consistent user experience
+- Wrap-around handled by modulo arithmetic in `move_selection_up()` and `move_selection_down()`
+- All three table rendering functions updated with identical selection highlighting logic
 
 ### File Locations
 - Main TUI: `src/main.rs` 

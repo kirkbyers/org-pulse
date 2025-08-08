@@ -84,7 +84,7 @@ fn draw_org_table(f: &mut Frame, area: Rect, app: &App) {
             .style(Style::default().bg(Color::Blue).fg(Color::White))
             .height(1);
 
-        let rows: Vec<Row> = orgs.iter().map(|org| {
+        let rows: Vec<Row> = orgs.iter().enumerate().map(|(i, org)| {
             let cells = vec![
                 Cell::from(org.name.clone()),
                 Cell::from(format_number(org.total_commits)),
@@ -92,7 +92,11 @@ fn draw_org_table(f: &mut Frame, area: Rect, app: &App) {
                 Cell::from(format_number(org.repo_count)),
                 Cell::from(format_number(org.contributor_count)),
             ];
-            Row::new(cells).height(1)
+            let mut row = Row::new(cells).height(1);
+            if i == app.selected_index {
+                row = row.style(Style::default().bg(Color::DarkGray).fg(Color::White));
+            }
+            row
         }).collect();
 
         let table = Table::new(
@@ -128,7 +132,7 @@ fn draw_repo_table(f: &mut Frame, area: Rect, app: &App) {
             .style(Style::default().bg(Color::Blue).fg(Color::White))
             .height(1);
 
-        let rows: Vec<Row> = repos.iter().map(|repo| {
+        let rows: Vec<Row> = repos.iter().enumerate().map(|(i, repo)| {
             let cells = vec![
                 Cell::from(repo.org_name.clone()),
                 Cell::from(repo.repo_name.clone()),
@@ -137,7 +141,11 @@ fn draw_repo_table(f: &mut Frame, area: Rect, app: &App) {
                 Cell::from(format_number(repo.prs)),
                 Cell::from(format_number(repo.contributor_count)),
             ];
-            Row::new(cells).height(1)
+            let mut row = Row::new(cells).height(1);
+            if i == app.selected_index {
+                row = row.style(Style::default().bg(Color::DarkGray).fg(Color::White));
+            }
+            row
         }).collect();
 
         let table = Table::new(
@@ -174,7 +182,7 @@ fn draw_contributor_table(f: &mut Frame, area: Rect, app: &App) {
             .style(Style::default().bg(Color::Blue).fg(Color::White))
             .height(1);
 
-        let rows: Vec<Row> = contributors.iter().map(|contributor| {
+        let rows: Vec<Row> = contributors.iter().enumerate().map(|(i, contributor)| {
             let orgs_display = if contributor.orgs.len() <= 2 {
                 contributor.orgs.join(", ")
             } else {
@@ -191,7 +199,11 @@ fn draw_contributor_table(f: &mut Frame, area: Rect, app: &App) {
                 Cell::from(format_number(contributor.repo_count)),
                 Cell::from(orgs_display),
             ];
-            Row::new(cells).height(1)
+            let mut row = Row::new(cells).height(1);
+            if i == app.selected_index {
+                row = row.style(Style::default().bg(Color::DarkGray).fg(Color::White));
+            }
+            row
         }).collect();
 
         let table = Table::new(
@@ -233,7 +245,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         }
     );
 
-    let footer_text = format!("q: Quit | o: Orgs | r: Repos | u: Contributors | {}", sort_info);
+    let footer_text = format!("q: Quit | ↑↓/j/k: Navigate | o: Orgs | r: Repos | u: Contributors | {}", sort_info);
     let footer = Paragraph::new(footer_text)
         .block(Block::default().borders(Borders::ALL))
         .alignment(Alignment::Left);
