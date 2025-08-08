@@ -5,7 +5,8 @@ use ratatui::{
     Frame,
 };
 
-use super::state::{App, View, ViewData, SortField, SortOrder};
+use super::state::{App, View, SortField, SortOrder};
+use crate::stats::ViewData;
 
 pub fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()

@@ -44,11 +44,14 @@
 - [x] Added Clone derives to db structs for easier usage
 - [x] Deprecated old scrape.rs patterns in favor of db.rs
 
-### Task 2.2: Add Statistics Data Structures
-- [ ] Add `src/stats.rs`
-- [ ] Define `OrgStats`, `RepoStats`, `ContributorStats` structs
-- [ ] Define `ScrapeInfo` struct
-- [ ] Add `ViewData` enum to hold different stat types
+### Task 2.2: Add Statistics Data Structures ✅
+- [x] Add `src/stats.rs`
+- [x] Define `OrgStats`, `RepoStats`, `ContributorStats` structs
+- [x] Define `ScrapeInfo` struct
+- [x] Add `ViewData` enum to hold different stat types
+- [x] Reorganized statistics structures from app/state.rs to dedicated stats.rs module
+- [x] Updated imports and module exports to use new stats module
+- [x] Maintained clean separation between app state and statistics data structures
 
 ### Task 2.3: Extend Database with TUI Queries
 - [ ] Add `Scrape::list_all()` method to get all scrapes

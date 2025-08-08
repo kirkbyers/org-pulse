@@ -1,3 +1,5 @@
+use crate::stats::{ViewData, ScrapeInfo};
+
 #[derive(Debug, Clone)]
 pub struct App {
     pub current_view: View,
@@ -31,51 +33,6 @@ pub enum SortField {
 pub enum SortOrder {
     Ascending,
     Descending,
-}
-
-#[derive(Debug, Clone)]
-pub enum ViewData {
-    Orgs(Vec<OrgStats>),
-    Repos(Vec<RepoStats>),
-    Contributors(Vec<ContributorStats>),
-    Loading,
-    Error(String),
-}
-
-#[derive(Debug, Clone)]
-pub struct OrgStats {
-    pub name: String,
-    pub total_commits: i64,
-    pub total_lines: i64,
-    pub repo_count: i64,
-    pub contributor_count: i64,
-}
-
-#[derive(Debug, Clone)]
-pub struct RepoStats {
-    pub org_name: String,
-    pub repo_name: String,
-    pub commits: i64,
-    pub lines: i64,
-    pub prs: i64,
-    pub contributor_count: i64,
-}
-
-#[derive(Debug, Clone)]
-pub struct ContributorStats {
-    pub username: String,
-    pub total_commits: i64,
-    pub total_lines: i64,
-    pub repo_count: i64,
-    pub orgs: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ScrapeInfo {
-    pub id: i64,
-    pub start_dt: chrono::DateTime<chrono::Utc>,
-    pub end_dt: chrono::DateTime<chrono::Utc>,
-    pub repo_count: i64,
 }
 
 impl Default for App {
