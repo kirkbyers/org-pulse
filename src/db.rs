@@ -1,15 +1,20 @@
 use chrono::{DateTime, Utc};
-use sqlx::{pool::PoolConnection, query, query_as, sqlite::SqlitePoolOptions, Row, Sqlite, SqlitePool};
+use sqlx::{migrate::Migrator, pool::PoolConnection, query, query_as, sqlite::SqlitePoolOptions, Row, Sqlite, SqlitePool};
 use anyhow::{Result};
 
 const DB_URL: &str = "sqlite://org-pulse.db?mode=rwc";
+static MIGRATOR: Migrator = sqlx::migrate!();
 
-pub async fn new_pool () -> Result<SqlitePool> {
-    SqlitePoolOptions::new()
+pub async fn new_pool() -> Result<SqlitePool> {
+    let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect(DB_URL)
-        .await.map_err(|e| e.into())
+        .await?;
     
+    // Run migrations automatically
+    MIGRATOR.run(&pool).await?;
+    
+    Ok(pool)
 }
 
 type PoolConn = PoolConnection<Sqlite>;
