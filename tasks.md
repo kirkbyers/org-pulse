@@ -62,12 +62,12 @@
 - [x] Scrape browsing interface with 't' key
 - [x] Seamless scrape switching
 
-### Task 4.3: Background Scraping
-- [ ] Add "Start Scrape" functionality ('S' key)
-- [ ] Show "Scraping..." indicator during operation
-- [ ] Block TUI during scraping (foreground operation)
-- [ ] Refresh data after scrape completes
-- [ ] Handle scrape errors gracefully
+### Task 4.3: Background Scraping ✅
+- [x] Add "Start Scrape" functionality ('S' key)
+- [x] Show "Scraping..." indicator during operation
+- [x] Block TUI during scraping (foreground operation)  
+- [x] Refresh data after scrape completes
+- [x] Handle scrape errors gracefully
 
 ### Task 4.4: Detail Views (Drill-down)
 - [ ] Add detail view state to App
@@ -106,8 +106,8 @@
 
 ## Current Status
 - ✅ Phases 1-3: Complete TUI infrastructure, database integration, and core functionality
-- ✅ Tasks 4.1-4.2: Complete sorting and scrape selection
-- 🔄 Next: Task 4.3 Background Scraping
+- ✅ Tasks 4.1-4.3: Complete sorting, scrape selection, and background scraping
+- 🔄 Next: Task 4.4 Detail Views (Drill-down)
 
 ## Key Implementation Files
 - **Main TUI**: `src/main.rs`
@@ -118,4 +118,21 @@
 - **Statistics**: `src/stats.rs`
 
 ## Next Steps
-**Task 4.3: Background Scraping** - 'S' key implementation currently stubbed in events.rs:94-96, needs integration with scraper::run_scrape() function.
+**Task 4.4: Detail Views** - Add drill-down navigation from organizations to repos, repos to contributors, and contributors to repo contributions.
+
+### Task 4.3 Implementation Notes ✅
+**Completed Features:**
+- ✅ **'S' Key Handler**: Requests scraping when not already in progress
+- ✅ **Async Integration**: Integrated with existing scraper::run_scrape() function using blocking approach
+- ✅ **Status Tracking**: Added scraping_error field and start_scraping_requested flag
+- ✅ **UI Indicators**: Header shows scraping status and errors, main content displays scraping overlay
+- ✅ **Error Handling**: Graceful handling of scraping failures with error display
+- ✅ **Data Refresh**: Auto-refresh scrape list and switch to latest scrape after completion
+- ✅ **Footer Updates**: Added 'S: New Scrape' to keyboard shortcuts
+
+**Technical Implementation:**
+- Added request_scraping() method for event handler to avoid blocking in event processing
+- Implemented handle_scraping_request() in main loop for actual async scraping execution
+- Added scraping overlay in UI that blocks interaction during scraping operation
+- Enhanced header with status indicators (🔄 SCRAPING... or ❌ ERROR messages)
+- Integrated refresh_after_scrape() to reload data and switch to newest scrape

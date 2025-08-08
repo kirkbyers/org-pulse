@@ -1,5 +1,6 @@
 use crate::stats::{ViewData, ScrapeInfo, OrgStats, RepoStats, ContributorStats};
 use crate::db::{new_pool, Scrape, get_org_stats, get_repo_stats, get_contributor_stats};
+use crate::scraper;
 use anyhow::Result;
 
 #[derive(Debug, Clone)]
@@ -14,7 +15,9 @@ pub struct App {
     pub scrape_selected_index: usize,
     pub should_quit: bool,
     pub is_scraping: bool,
+    pub scraping_error: Option<String>,
     pub pending_view_switch: Option<View>,
+    pub start_scraping_requested: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -53,7 +56,9 @@ impl Default for App {
             scrape_selected_index: 0,
             should_quit: false,
             is_scraping: false,
+            scraping_error: None,
             pending_view_switch: None,
+            start_scraping_requested: false,
         }
     }
 }
@@ -359,5 +364,59 @@ impl App {
                 });
             }
         }
+    }
+
+    pub fn request_scraping(&mut self) {
+        self.start_scraping_requested = true;
+    }
+
+    pub fn start_scraping(&mut self) {
+        self.is_scraping = true;
+        self.scraping_error = None;
+        self.start_scraping_requested = false;
+    }
+
+    pub fn finish_scraping_success(&mut self) {
+        self.is_scraping = false;
+        self.scraping_error = None;
+    }
+
+    pub fn finish_scraping_error(&mut self, error: String) {
+        self.is_scraping = false;
+        self.scraping_error = Some(error);
+    }
+
+    pub async fn refresh_after_scrape(&mut self) -> Result<()> {
+        // Reload scrape list to include new scrape
+        let pool = new_pool().await?;
+        let mut db_conn = pool.acquire().await?;
+        self.scrapes = Scrape::list_all(&mut db_conn).await?;
+        
+        // Switch to the latest scrape (which should be the new one)
+        if let Some(latest) = self.scrapes.first() {
+            self.current_scrape = Some(latest.id);
+            self.refresh_current_view_data().await?;
+        }
+        
+        Ok(())
+    }
+
+    pub async fn handle_scraping_request(&mut self) -> Result<()> {
+        if self.start_scraping_requested {
+            self.start_scraping();
+            
+            // Run the scrape (this will block the TUI as intended per plan)
+            match scraper::run_scrape().await {
+                Ok(()) => {
+                    self.finish_scraping_success();
+                    // Refresh data after successful scrape
+                    self.refresh_after_scrape().await?;
+                }
+                Err(e) => {
+                    self.finish_scraping_error(format!("Scrape failed: {}", e));
+                }
+            }
+        }
+        Ok(())
     }
 }

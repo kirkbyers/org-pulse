@@ -91,8 +91,10 @@ fn handle_key_event(key: KeyEvent, app: &mut App) -> Result<()> {
             }
         }
         KeyCode::Char('S') => {
-            // TODO: Start new scrape
-            app.is_scraping = true;
+            // Don't start new scrape if already scraping
+            if !app.is_scraping {
+                app.request_scraping();
+            }
         }
         _ => {}
     }

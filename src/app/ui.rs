@@ -65,7 +65,15 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
         }
     };
 
-    let header_text = format!("{} | {}{}", scrape_info, view_name, selection_info);
+    let status_text = if app.is_scraping {
+        " | 🔄 SCRAPING..."
+    } else if let Some(error) = &app.scraping_error {
+        &format!(" | ❌ ERROR: {}", error)
+    } else {
+        ""
+    };
+
+    let header_text = format!("{} | {}{}{}", scrape_info, view_name, selection_info, status_text);
     let header = Paragraph::new(header_text)
         .block(Block::default().borders(Borders::ALL).title("org-pulse TUI"))
         .alignment(Alignment::Center);
@@ -74,6 +82,16 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_main_content(f: &mut Frame, area: Rect, app: &App) {
+    // Show scraping overlay when scraping is in progress
+    if app.is_scraping {
+        let scraping = Paragraph::new("🔄 SCRAPING IN PROGRESS...\n\nPlease wait while fetching GitHub data.\nThis may take several minutes depending on organization size.")
+            .block(Block::default().borders(Borders::ALL))
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
+        f.render_widget(scraping, area);
+        return;
+    }
+
     match app.current_view {
         View::ScrapeSelection => draw_scrape_selection_table(f, area, app),
         _ => match &app.data {
@@ -319,7 +337,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     let footer_line1 = if app.current_view == View::ScrapeSelection {
         "Navigation: ↑↓/j/k | Enter: Select | Esc/t: Back | q: Quit"
     } else {
-        "Navigation: ↑↓/j/k | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | q: Quit"
+        "Navigation: ↑↓/j/k | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | S: New Scrape | q: Quit"
     };
     let footer_line2 = format!("{}", sort_info);
     
