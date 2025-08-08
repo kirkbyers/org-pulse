@@ -14,6 +14,7 @@ pub async fn new_pool () -> Result<SqlitePool> {
 
 type PoolConn = PoolConnection<Sqlite>;
 
+#[derive(Debug, Clone)]
 pub struct Org {
     pub id: i64,
     pub name: String,
@@ -64,6 +65,7 @@ impl Org {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Contributor {
     pub id: i64,
     pub username: String,
@@ -114,6 +116,7 @@ impl Contributor {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Repo {
     pub id: i64,
     pub name: String,

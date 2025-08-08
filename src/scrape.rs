@@ -20,19 +20,8 @@ pub struct Scrape {
 }
 
 impl Scrape {
-    pub async fn new(mut db_conn: PoolConnection<Sqlite>, org_name: &str, repo_name: &str, ignored_user_patterns: &str) -> Result<Self> {
-        let (_db_org_id, _db_org_name) = create_org(&mut db_conn, org_name).await?;
-        Ok(Scrape { 
-            org: org_name.to_string(), 
-            repo: repo_name.to_string(), 
-            ignored_user_patterns: ignored_user_patterns.to_string(),
-            contributors: HashMap::new(), 
-            commits: 0,
-            prs: 0,
-            lines: 0,
-            db_connection: db_conn
-        })
-    }
+    // NOTE: This struct is deprecated in favor of using db.rs patterns directly
+    // Kept for compatibility but should not be used in new code
 
     pub fn process_commit(self: &mut Self, commit: &RepoCommit) -> Result<()> {
         // The only info we can get from this struct is author
@@ -95,11 +84,4 @@ impl ScrapeContributor {
     }
 }
 
-async fn create_org(pool_conn: &mut PoolConnection<Sqlite>, org_name: &str) -> Result<(u64, String)> {
-    let org_rows: (u64, String) = query_as("
-        INSERT OR IGNORE INTO orgs (name) VALUES ($1);
-        SELECT id, name FROM orgs WHERE name = $1 LIMIT 1;
-    ").bind(org_name).fetch_one(pool_conn.as_mut()).await?;
-
-    Ok(org_rows)
-}
+// NOTE: This function is deprecated - use db::Org::create instead

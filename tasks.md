@@ -35,11 +35,14 @@
 
 ## Phase 2: Database Integration
 
-### Task 2.1: Fix Database Architecture Issues
-- [ ] Review scrape.rs vs db.rs patterns
-- [ ] Move database operations from scrape.rs to use db.rs create/get methods
-- [ ] Ensure scrape.rs calls db.rs for all database operations
-- [ ] Test that existing scraping still works with db.rs methods
+### Task 2.1: Fix Database Architecture Issues ✅
+- [x] Review scrape.rs vs db.rs patterns
+- [x] Move database operations from scrape.rs to use db.rs create/get methods
+- [x] Ensure scrape.rs calls db.rs for all database operations
+- [x] Test that existing scraping still works with db.rs methods
+- [x] Refactored scraper.rs to use proper db.rs create/get methods
+- [x] Added Clone derives to db structs for easier usage
+- [x] Deprecated old scrape.rs patterns in favor of db.rs
 
 ### Task 2.2: Add Statistics Data Structures
 - [ ] Add `src/stats.rs`
