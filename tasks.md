@@ -8,13 +8,15 @@
 - [x] Test basic compilation
 - [x] Fixed compilation error by adding `Row` import to db.rs
 
-### Task 1.2: Create Project Structure
-- [ ] Create `src/app/` directory
-- [ ] Create `src/app/mod.rs` with basic module structure
-- [ ] Create `src/app/state.rs` with App struct and enums
-- [ ] Create `src/app/ui.rs` stub
-- [ ] Create `src/app/events.rs` stub
-- [ ] Update `src/lib.rs` to include new modules
+### Task 1.2: Create Project Structure ✅
+- [x] Create `src/app/` directory
+- [x] Create `src/app/mod.rs` with basic module structure
+- [x] Create `src/app/state.rs` with App struct and enums
+- [x] Create `src/app/ui.rs` stub
+- [x] Create `src/app/events.rs` stub
+- [x] Update `src/lib.rs` to include new modules
+- [x] Fixed ratatui Frame API usage for 0.26 compatibility
+- [x] Removed unused imports to clean up warnings
 
 ### Task 1.3: Move Scraper Logic
 - [ ] Create `src/scraper.rs`
