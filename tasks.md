@@ -116,12 +116,12 @@
 - [x] Update UI to show current sort
 - [x] Test sorting works for all fields in all views
 
-### Task 4.2: Scrape Selection
-- [ ] Add scrape selection mode/view
-- [ ] Allow browsing available scrapes
-- [ ] Switch between scrapes and reload data
-- [ ] Add keyboard shortcut to enter scrape selection
-- [ ] Test scrape selection works
+### Task 4.2: Scrape Selection ✅
+- [x] Add scrape selection mode/view
+- [x] Allow browsing available scrapes
+- [x] Switch between scrapes and reload data
+- [x] Add keyboard shortcut to enter scrape selection
+- [x] Test scrape selection works
 
 ### Task 4.3: Background Scraping
 - [ ] Add "Start Scrape" functionality ('S' key)
@@ -187,9 +187,38 @@
 ## Resume Notes
 
 ### Current State (Last Updated)
-- **Completed**: Phases 1, 2 & 3, Task 4.1
-- **Next Task**: Task 4.2: Scrape Selection
-- **Key Achievement**: Complete sorting system with multi-field sorting across all views
+- **Completed**: Phases 1, 2 & 3, Tasks 4.1 & 4.2
+- **Next Task**: Task 4.3: Background Scraping
+- **Key Achievement**: Complete scrape selection system with browsing and switching functionality
+
+### Resume Notes for Next Session
+**Current Progress:**
+- ✅ **Phases 1-3 Complete**: Full TUI infrastructure, database integration, and core functionality
+- ✅ **Task 4.1 Complete**: Multi-field sorting system with keyboard shortcuts
+- ✅ **Task 4.2 Complete**: Scrape selection and browsing interface
+
+**Next Priority - Task 4.3: Background Scraping:**
+1. **'S' Key Implementation**: Currently stubbed in events.rs line 94-96, needs actual scraper integration
+2. **UI Indicators**: Add "Scraping..." status display and progress indication
+3. **Async Integration**: Integrate with existing `scraper::run_scrape()` function
+4. **Error Handling**: Graceful handling of scraping failures
+5. **Data Refresh**: Auto-refresh scrape list and data after completion
+
+**Key Implementation Areas:**
+- **events.rs**: Replace stub 'S' key handler with async scraping call
+- **state.rs**: Add scraping status tracking and progress state
+- **ui.rs**: Add scraping indicators to header/footer
+- **main.rs**: May need async scraping task management
+
+**Current Keyboard Shortcuts:**
+- Navigation: ↑↓/j/k, Views: o/r/u, Sort: s/n/c/l/p/R, Scrapes: t, Quit: q
+- Scrape Selection: t (toggle), Enter (select), Esc (back)
+
+**Architecture Status:**
+- All core systems working: tables, navigation, sorting, scrape selection
+- Database auto-migration functional
+- Clean separation between sync UI and async operations
+- Ready for final polish phase tasks
 
 ### Recent Progress Summary
 1. ✅ **Phase 1**: Complete TUI infrastructure (dependencies, structure, scraper separation, basic app)
@@ -200,6 +229,7 @@
   - ✅ **Task 3.3**: Complete navigation system (up/down/j/k keys, row highlighting, wrap-around selection)
   - ✅ **Task 3.4**: Enhanced header and footer with comprehensive UI information
 4. ✅ **Task 4.1**: Complete sorting implementation with multi-field support and keyboard shortcuts
+5. ✅ **Task 4.2**: Complete scrape selection system with browsing interface and data switching
 
 ### Key Technical Implementation Details
 - **App Structure**: `src/app/` with state.rs, events.rs, ui.rs modules
@@ -277,6 +307,24 @@ get_contributor_stats(pool, scrape_id) -> Vec<ContributorStats>
 - Added `apply_sort()` method that automatically applies sorting to current data
 - Integrated sorting into data refresh cycle so initial data loads are properly sorted
 - Fallback sorting logic handles inapplicable fields gracefully (PRs → commits for orgs/contributors)
+
+### Task 4.2 Implementation Notes ✅
+**Completed Features:**
+- ✅ **Scrape Selection Mode**: Added `ScrapeSelection` view to browse available scrapes
+- ✅ **Interactive Table**: Professional scrape list with ID, dates, and repository count
+- ✅ **Keyboard Navigation**: Up/down navigation with j/k support for scrape browsing
+- ✅ **Easy Access**: 't' key toggles between scrape selection and data views
+- ✅ **Seamless Switching**: Enter key selects scrape and automatically loads data
+- ✅ **Smart UI**: Context-sensitive footer shows appropriate shortcuts for each mode
+- ✅ **Data Integration**: Automatic data refresh when switching between scrapes
+
+**Technical Implementation:**
+- Extended `View` enum with `ScrapeSelection` variant
+- Added `scrape_selected_index` field for independent navigation within scrapes
+- Implemented context-sensitive event handling (different behavior in scrape selection mode)
+- Created dedicated `draw_scrape_selection_table()` function with formatted date display
+- Modified header to show scrape count and selection position
+- Enhanced `handle_pending_view_switch()` to handle scrape selection logic
 
 ### File Locations
 - Main TUI: `src/main.rs` 

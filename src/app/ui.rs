@@ -43,13 +43,26 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
         View::Org => "Organizations",
         View::Repo => "Repositories", 
         View::Contributors => "Contributors",
+        View::ScrapeSelection => "Scrape Selection",
     };
 
-    let item_count = app.get_item_count();
-    let selection_info = if item_count > 0 {
-        format!(" | {}/{} items", app.selected_index + 1, item_count)
-    } else {
-        " | No items".to_string()
+    let (_item_count, selection_info) = match app.current_view {
+        View::ScrapeSelection => {
+            let count = app.scrapes.len();
+            if count > 0 {
+                (count, format!(" | {}/{} scrapes", app.scrape_selected_index + 1, count))
+            } else {
+                (0, " | No scrapes".to_string())
+            }
+        }
+        _ => {
+            let count = app.get_item_count();
+            if count > 0 {
+                (count, format!(" | {}/{} items", app.selected_index + 1, count))
+            } else {
+                (0, " | No items".to_string())
+            }
+        }
     };
 
     let header_text = format!("{} | {}{}", scrape_info, view_name, selection_info);
@@ -61,23 +74,26 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_main_content(f: &mut Frame, area: Rect, app: &App) {
-    match &app.data {
-        ViewData::Loading => {
-            let loading = Paragraph::new("Loading...")
-                .block(Block::default().borders(Borders::ALL))
-                .alignment(Alignment::Center);
-            f.render_widget(loading, area);
+    match app.current_view {
+        View::ScrapeSelection => draw_scrape_selection_table(f, area, app),
+        _ => match &app.data {
+            ViewData::Loading => {
+                let loading = Paragraph::new("Loading...")
+                    .block(Block::default().borders(Borders::ALL))
+                    .alignment(Alignment::Center);
+                f.render_widget(loading, area);
+            }
+            ViewData::Error(msg) => {
+                let error = Paragraph::new(format!("Error: {}", msg))
+                    .block(Block::default().borders(Borders::ALL))
+                    .style(Style::default().fg(Color::Red))
+                    .alignment(Alignment::Center);
+                f.render_widget(error, area);
+            }
+            ViewData::Orgs(_) => draw_org_table(f, area, app),
+            ViewData::Repos(_) => draw_repo_table(f, area, app),
+            ViewData::Contributors(_) => draw_contributor_table(f, area, app),
         }
-        ViewData::Error(msg) => {
-            let error = Paragraph::new(format!("Error: {}", msg))
-                .block(Block::default().borders(Borders::ALL))
-                .style(Style::default().fg(Color::Red))
-                .alignment(Alignment::Center);
-            f.render_widget(error, area);
-        }
-        ViewData::Orgs(_) => draw_org_table(f, area, app),
-        ViewData::Repos(_) => draw_repo_table(f, area, app),
-        ViewData::Contributors(_) => draw_contributor_table(f, area, app),
     }
 }
 
@@ -236,6 +252,53 @@ fn draw_contributor_table(f: &mut Frame, area: Rect, app: &App) {
     }
 }
 
+fn draw_scrape_selection_table(f: &mut Frame, area: Rect, app: &App) {
+    if app.scrapes.is_empty() {
+        let placeholder = Paragraph::new("No scrapes available")
+            .block(Block::default().borders(Borders::ALL))
+            .alignment(Alignment::Center);
+        f.render_widget(placeholder, area);
+        return;
+    }
+
+    let header_cells = ["Scrape ID", "Start Date", "End Date", "Repository Count"]
+        .iter()
+        .map(|h| Cell::from(*h).style(Style::default().add_modifier(Modifier::BOLD)));
+    
+    let header = Row::new(header_cells)
+        .style(Style::default().bg(Color::Blue).fg(Color::White))
+        .height(1);
+
+    let rows: Vec<Row> = app.scrapes.iter().enumerate().map(|(i, scrape)| {
+        let cells = vec![
+            Cell::from(scrape.id.to_string()),
+            Cell::from(scrape.start_dt.format("%Y-%m-%d %H:%M").to_string()),
+            Cell::from(scrape.end_dt.format("%Y-%m-%d %H:%M").to_string()),
+            Cell::from(scrape.repo_count.to_string()),
+        ];
+        let mut row = Row::new(cells).height(1);
+        if i == app.scrape_selected_index {
+            row = row.style(Style::default().bg(Color::DarkGray).fg(Color::White));
+        }
+        row
+    }).collect();
+
+    let table = Table::new(
+        rows,
+        &[
+            Constraint::Percentage(15), // Scrape ID
+            Constraint::Percentage(30), // Start Date
+            Constraint::Percentage(30), // End Date
+            Constraint::Percentage(25), // Repository Count
+        ]
+    )
+        .header(header)
+        .block(Block::default().borders(Borders::ALL).title("Available Scrapes"))
+        .column_spacing(1);
+
+    f.render_widget(table, area);
+}
+
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     let sort_info = format!(
         "Sort: {} {}",
@@ -253,7 +316,11 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     );
 
     // Split footer into two lines for better readability
-    let footer_line1 = "Navigation: ↑↓/j/k | Views: o/r/u | Sort: s/n/c/l/p/R | q: Quit";
+    let footer_line1 = if app.current_view == View::ScrapeSelection {
+        "Navigation: ↑↓/j/k | Enter: Select | Esc/t: Back | q: Quit"
+    } else {
+        "Navigation: ↑↓/j/k | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | q: Quit"
+    };
     let footer_line2 = format!("{}", sort_info);
     
     let footer_text = format!("{}\n{}", footer_line1, footer_line2);

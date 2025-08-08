@@ -11,6 +11,7 @@ pub struct App {
     pub sort_order: SortOrder,
     pub sort_field: SortField,
     pub selected_index: usize,
+    pub scrape_selected_index: usize,
     pub should_quit: bool,
     pub is_scraping: bool,
     pub pending_view_switch: Option<View>,
@@ -21,6 +22,7 @@ pub enum View {
     Org,
     Repo,
     Contributors,
+    ScrapeSelection,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -48,6 +50,7 @@ impl Default for App {
             sort_order: SortOrder::Descending,
             sort_field: SortField::Commits,
             selected_index: 0,
+            scrape_selected_index: 0,
             should_quit: false,
             is_scraping: false,
             pending_view_switch: None,
@@ -73,6 +76,10 @@ impl App {
         // Default to latest scrape if available
         if let Some(latest_scrape) = Scrape::get_latest(&mut db_conn).await? {
             app.current_scrape = Some(latest_scrape.id);
+            // Set scrape selection index to the latest scrape
+            if let Some(index) = app.scrapes.iter().position(|s| s.id == latest_scrape.id) {
+                app.scrape_selected_index = index;
+            }
 
             // Load initial org stats for the latest scrape
             let org_stats = get_org_stats(&mut db_conn, latest_scrape.id).await?;
@@ -159,6 +166,22 @@ impl App {
         }
     }
 
+    pub fn move_scrape_selection_up(&mut self) {
+        if !self.scrapes.is_empty() {
+            self.scrape_selected_index = if self.scrape_selected_index == 0 {
+                self.scrapes.len() - 1
+            } else {
+                self.scrape_selected_index - 1
+            };
+        }
+    }
+
+    pub fn move_scrape_selection_down(&mut self) {
+        if !self.scrapes.is_empty() {
+            self.scrape_selected_index = (self.scrape_selected_index + 1) % self.scrapes.len();
+        }
+    }
+
     pub fn get_item_count(&self) -> usize {
         match &self.data {
             ViewData::Orgs(orgs) => orgs.len(),
@@ -186,6 +209,9 @@ impl App {
                     let contributor_stats = get_contributor_stats(&mut db_conn, scrape_id).await?;
                     self.data = ViewData::Contributors(contributor_stats);
                 }
+                View::ScrapeSelection => {
+                    // No data loading needed for scrape selection view
+                }
             }
             // Apply current sort after loading data
             self.apply_sort();
@@ -207,7 +233,22 @@ impl App {
 
     pub async fn handle_pending_view_switch(&mut self) -> Result<()> {
         if let Some(view) = self.pending_view_switch.take() {
-            self.switch_view_with_data(view).await?;
+            // Special handling for selecting a scrape when in scrape selection mode
+            if self.current_view == View::ScrapeSelection && view != View::ScrapeSelection {
+                self.select_current_scrape().await?;
+            } else {
+                self.switch_view_with_data(view).await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn select_current_scrape(&mut self) -> Result<()> {
+        if let Some(scrape) = self.scrapes.get(self.scrape_selected_index) {
+            self.current_scrape = Some(scrape.id);
+            self.current_view = View::Org; // Return to org view after selecting scrape
+            self.selected_index = 0; // Reset selection
+            self.refresh_current_view_data().await?;
         }
         Ok(())
     }
