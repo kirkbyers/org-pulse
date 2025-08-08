@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sqlx::{pool::PoolConnection, query, query_as, sqlite::SqlitePoolOptions, Sqlite, SqlitePool};
+use sqlx::{pool::PoolConnection, query, query_as, sqlite::SqlitePoolOptions, Row, Sqlite, SqlitePool};
 use anyhow::{Result};
 
 const DB_URL: &str = "sqlite://org-pulse.db?mode=rwc";

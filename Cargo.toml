@@ -7,7 +7,9 @@ edition = "2024"
 anyhow = "1.0.98"
 chrono = { version = "0.4.41", features = ["serde"] }
 confy = "1.0.0"
+crossterm = "0.27"
 octocrab = "0.44.1"
+ratatui = "0.26"
 regex = "1.11.1"
 serde = "1.0.219"
 sqlx = { version = "0.8.6", features = ["chrono", "macros", "migrate", "runtime-tokio", "sqlite", "uuid"] }
