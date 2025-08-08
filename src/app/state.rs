@@ -137,7 +137,7 @@ impl App {
         }
     }
 
-    fn get_item_count(&self) -> usize {
+    pub fn get_item_count(&self) -> usize {
         match &self.data {
             ViewData::Orgs(orgs) => orgs.len(),
             ViewData::Repos(repos) => repos.len(),

@@ -24,7 +24,7 @@ pub fn ui(f: &mut Frame, app: &App) {
         .constraints([
             Constraint::Length(3), // Header
             Constraint::Min(0),    // Main content
-            Constraint::Length(2), // Footer
+            Constraint::Length(3), // Footer
         ])
         .split(f.size());
 
@@ -45,7 +45,14 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
         View::Contributors => "Contributors",
     };
 
-    let header_text = format!("{} | {}", scrape_info, view_name);
+    let item_count = app.get_item_count();
+    let selection_info = if item_count > 0 {
+        format!(" | {}/{} items", app.selected_index + 1, item_count)
+    } else {
+        " | No items".to_string()
+    };
+
+    let header_text = format!("{} | {}{}", scrape_info, view_name, selection_info);
     let header = Paragraph::new(header_text)
         .block(Block::default().borders(Borders::ALL).title("org-pulse TUI"))
         .alignment(Alignment::Center);
@@ -245,7 +252,11 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         }
     );
 
-    let footer_text = format!("q: Quit | ↑↓/j/k: Navigate | o: Orgs | r: Repos | u: Contributors | {}", sort_info);
+    // Split footer into two lines for better readability
+    let footer_line1 = "Navigation: ↑↓/j/k | Views: o/r/u | Sort: s/n/c/l/p/R | q: Quit";
+    let footer_line2 = format!("{}", sort_info);
+    
+    let footer_text = format!("{}\n{}", footer_line1, footer_line2);
     let footer = Paragraph::new(footer_text)
         .block(Block::default().borders(Borders::ALL))
         .alignment(Alignment::Left);

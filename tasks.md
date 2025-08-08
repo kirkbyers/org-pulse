@@ -75,7 +75,7 @@
 - [x] Added data refresh methods for view switching
 - [x] Proper error handling when no scrape data exists
 
-## Phase 3: Core TUI Functionality
+## Phase 3: Core TUI Functionality ✅
 
 ### Task 3.1: View Management ✅
 - [x] Implement view switching logic in app state
@@ -101,11 +101,11 @@
 - [x] Handle wrap-around at list boundaries
 - [x] Test navigation works in all views
 
-### Task 3.4: Header and Footer
-- [ ] Add header with current scrape info and view name
-- [ ] Add footer with keyboard shortcuts
-- [ ] Show current sort field and order
-- [ ] Test header/footer display correctly
+### Task 3.4: Header and Footer ✅
+- [x] Add header with current scrape info and view name
+- [x] Add footer with keyboard shortcuts
+- [x] Show current sort field and order
+- [x] Test header/footer display correctly
 
 ## Phase 4: Sorting and Polish
 
@@ -180,23 +180,25 @@
 ## Current Status
 - [x] Phase 1: Basic TUI Structure
 - [x] Phase 2: Database Integration  
-- [ ] Phase 3: Core TUI Functionality
+- [x] Phase 3: Core TUI Functionality
 - [ ] Phase 4: Sorting and Polish
 - [ ] Phase 5: Final Testing and Documentation
 
 ## Resume Notes
 
 ### Current State (Last Updated)
-- **Completed**: Phases 1 & 2, Tasks 3.1, 3.2 & 3.3
-- **Next Task**: Task 3.4: Header and Footer
-- **Key Achievement**: Complete navigation system with row highlighting and keyboard controls
+- **Completed**: Phases 1, 2 & 3 (all tasks complete)
+- **Next Task**: Task 4.1: Sorting Implementation
+- **Key Achievement**: Complete core TUI functionality with navigation, tables, and enhanced UI
 
 ### Recent Progress Summary
 1. ✅ **Phase 1**: Complete TUI infrastructure (dependencies, structure, scraper separation, basic app)
 2. ✅ **Phase 2**: Complete database integration (architecture fixes, stats structures, TUI queries, data loading)  
-3. ✅ **Task 3.1**: Complete view management (o/r/u key switching with async data refresh)
-4. ✅ **Task 3.2**: Complete table rendering (proper ratatui tables with headers, formatting, and responsive layout)
-5. ✅ **Task 3.3**: Complete navigation system (up/down/j/k keys, row highlighting, wrap-around selection)
+3. ✅ **Phase 3**: Complete core TUI functionality (view management, table rendering, navigation, header/footer)
+  - ✅ **Task 3.1**: Complete view management (o/r/u key switching with async data refresh)
+  - ✅ **Task 3.2**: Complete table rendering (proper ratatui tables with headers, formatting, and responsive layout)
+  - ✅ **Task 3.3**: Complete navigation system (up/down/j/k keys, row highlighting, wrap-around selection)
+  - ✅ **Task 3.4**: Enhanced header and footer with comprehensive UI information
 
 ### Key Technical Implementation Details
 - **App Structure**: `src/app/` with state.rs, events.rs, ui.rs modules
@@ -243,6 +245,21 @@ get_contributor_stats(pool, scrape_id) -> Vec<ContributorStats>
 - Selection state resets to 0 when switching views for consistent user experience
 - Wrap-around handled by modulo arithmetic in `move_selection_up()` and `move_selection_down()`
 - All three table rendering functions updated with identical selection highlighting logic
+
+### Task 3.4 Implementation Notes ✅
+**Completed Features:**
+- ✅ **Enhanced Header**: Added item count and current selection (e.g., "3/25 items") to provide user context
+- ✅ **Comprehensive Footer**: Split into two lines for better organization with all keyboard shortcuts
+- ✅ **Navigation Info**: Clear display of available navigation keys (↑↓/j/k)
+- ✅ **View Switching**: Organized view controls (o/r/u) for easy reference
+- ✅ **Sort Information**: Real-time display of current sort field and order with directional arrows
+- ✅ **Layout Optimization**: Increased footer height to 3 lines to accommodate comprehensive information
+
+**Technical Implementation:**
+- Made `get_item_count()` method public in App struct for header access
+- Enhanced header with selection position display (current/total format)
+- Reorganized footer into logical groups: Navigation | Views | Sort | Status
+- Improved visual layout with proper spacing and categorization
 
 ### File Locations
 - Main TUI: `src/main.rs` 
