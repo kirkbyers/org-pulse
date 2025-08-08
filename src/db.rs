@@ -34,6 +34,22 @@ impl Org {
         })
     }
 
+    pub async fn create(pool_con: &mut PoolConn, name: String) -> Result<Org> {
+        let result = query("
+            INSERT INTO orgs (name)
+            VALUES ($1)
+            ON CONFLICT(name) DO UPDATE SET name = name
+            RETURNING id
+        ")
+            .bind(&name)
+            .fetch_one(pool_con.as_mut())
+            .await?;
+        
+        let id: i64 = result.get(0);
+        
+        Ok(Org { id, name })
+    }
+
     pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE orgs
@@ -66,6 +82,22 @@ impl Contributor {
             id: contributor_row.0,
             username: contributor_row.1
         })
+    }
+
+    pub async fn create(pool_con: &mut PoolConn, username: String) -> Result<Contributor> {
+        let result = query("
+            INSERT INTO contributors (username)
+            VALUES ($1)
+            ON CONFLICT(username) DO UPDATE SET username = username
+            RETURNING id
+        ")
+            .bind(&username)
+            .fetch_one(pool_con.as_mut())
+            .await?;
+        
+        let id: i64 = result.get(0);
+        
+        Ok(Contributor { id, username })
     }
 
     pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
@@ -104,6 +136,23 @@ impl Repo {
             name: repo_row.1,
             org
         })
+    }
+
+    pub async fn create(pool_con: &mut PoolConn, name: String, org: Org) -> Result<Repo> {
+        let result = query("
+            INSERT INTO repos (name, org_id)
+            VALUES ($1, $2)
+            ON CONFLICT(name) DO UPDATE SET org_id = org_id
+            RETURNING id
+        ")
+            .bind(&name)
+            .bind(org.id)
+            .fetch_one(pool_con.as_mut())
+            .await?;
+        
+        let id: i64 = result.get(0);
+        
+        Ok(Repo { id, name, org })
     }
 
     pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
@@ -184,6 +233,27 @@ impl Scrape {
         })
     }
 
+    pub async fn create(pool_con: &mut PoolConn, start_dt: DateTime<Utc>, end_dt: DateTime<Utc>) -> Result<Scrape> {
+        let result = query("
+            INSERT INTO scrapes (start_dt, end_dt)
+            VALUES ($1, $2)
+            RETURNING id
+        ")
+            .bind(&start_dt)
+            .bind(&end_dt)
+            .fetch_one(pool_con.as_mut())
+            .await?;
+        
+        let id: i64 = result.get(0);
+        
+        Ok(Scrape { 
+            id, 
+            start_dt, 
+            end_dt, 
+            repo_scrapes: Vec::new() 
+        })
+    }
+
     pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE scrapes
@@ -254,6 +324,34 @@ impl RepoScrape {
         })
     }
 
+    pub async fn create(pool_con: &mut PoolConn, scrape_id: i64, org: Org, repo: Repo, commits: i64, prs: i64, lines: i64) -> Result<RepoScrape> {
+        let result = query("
+            INSERT INTO repo_scrapes (scrape_id, org_id, repo_id, commits, prs, lines)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id
+        ")
+            .bind(scrape_id)
+            .bind(org.id)
+            .bind(repo.id)
+            .bind(commits)
+            .bind(prs)
+            .bind(lines)
+            .fetch_one(pool_con.as_mut())
+            .await?;
+        
+        let id: i64 = result.get(0);
+        
+        Ok(RepoScrape { 
+            id, 
+            org, 
+            repo, 
+            commits, 
+            prs, 
+            lines, 
+            contributor_scrapes: Vec::new() 
+        })
+    }
+
     pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE repo_scrapes
@@ -300,6 +398,29 @@ impl ContributorScrapes {
             contributor,
             commits: contributor_scrapes_row.3,
             lines: contributor_scrapes_row.4,
+        })
+    }
+
+    pub async fn create(pool_con: &mut PoolConn, repo_scrape_id: i64, contributor: Contributor, commits: i64, lines: i64) -> Result<ContributorScrapes> {
+        let result = query("
+            INSERT INTO contributor_scrapes (repo_scrape_id, contributor_id, commits, lines)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+        ")
+            .bind(repo_scrape_id)
+            .bind(contributor.id)
+            .bind(commits)
+            .bind(lines)
+            .fetch_one(pool_con.as_mut())
+            .await?;
+        
+        let id: i64 = result.get(0);
+        
+        Ok(ContributorScrapes { 
+            id, 
+            contributor, 
+            commits, 
+            lines 
         })
     }
 
