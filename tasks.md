@@ -18,11 +18,13 @@
 - [x] Fixed ratatui Frame API usage for 0.26 compatibility
 - [x] Removed unused imports to clean up warnings
 
-### Task 1.3: Move Scraper Logic
-- [ ] Create `src/scraper.rs`
-- [ ] Move current `main.rs` logic to `scraper::run_scrape()` function
-- [ ] Keep main.rs as TUI entry point
-- [ ] Test that scraper module compiles and works
+### Task 1.3: Move Scraper Logic ✅
+- [x] Create `src/scraper.rs`
+- [x] Move current `main.rs` logic to `scraper::run_scrape()` function
+- [x] Keep main.rs as TUI entry point
+- [x] Test that scraper module compiles and works
+- [x] Updated lib.rs to include scraper module
+- [x] Replaced main.rs with complete TUI setup and event loop
 
 ### Task 1.4: Basic TUI Application
 - [ ] Implement basic event loop in `main.rs`

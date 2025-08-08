@@ -1,58 +1,55 @@
-use std::env;
-use chrono::{Duration, Utc};
-use org_pulse::{config::get_config, db::new_pool, github::Github, scrape::Scrape};
-use regex::Regex;
-use sqlx::migrate;
+use anyhow::Result;
+use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{
+    backend::{Backend, CrosstermBackend},
+    Terminal,
+};
+use std::io;
+
+use org_pulse::app::{events::handle_events, state::App, ui::ui};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let db_pool = new_pool().await?;
-    migrate!().run(&db_pool).await?;
-    let cfg = get_config().unwrap();
-    let github_token:String = env::var("GITHUB_TOKEN")?;
-    let gh = Github::new(&github_token);
+async fn main() -> Result<()> {
+    // Setup terminal
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
 
-    let orgs = gh.get_orgs().await?;
-    let org_ignore_regex = Regex::new(&format!(r"{}", &cfg.ignored_org_pattern))?;
-    for org in orgs {
-        if let Some(_mat) = org_ignore_regex.find(&org.organization.login) {
-            continue;
-        }
+    // Create app state
+    let mut app = App::new();
 
-        let mut results_count = 50;
-        let mut page: u32 = 1;
-        let seven_days_ago = Utc::now() - Duration::days(7);
-        while results_count == 50 {
-            let repos = gh.get_org_repos_by_page(&org.organization.login, &results_count, &page).await?;
-            results_count = 0;
-            for repo in repos {
-                let db_conn = db_pool.acquire().await?;
-                let mut repo_scrape = Scrape::new(db_conn, &org.organization.login, &repo.name, &cfg.ignored_user_patterns).await?;
-                results_count += 1;
+    // Run the TUI
+    let result = run_tui(&mut terminal, &mut app).await;
 
-                let commits_this_week = match gh.get_repo_commits(&org.organization.login, &repo.name, seven_days_ago.clone()).await {
-                    Ok(val) => val,
-                    Err(_e) => continue
-                };
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
 
-                // Process each commit for the week in the repo
-                let mut commit_counter = 0;
-                for commit in commits_this_week {
-                    commit_counter += 1;
-                    let _ = repo_scrape.process_commit(&commit);
-                }
-                if commit_counter == 0 {
-                    break;
-                }
+    result
+}
 
-                let _repo_prs = gh.get_repo_prs(&org.organization.login, &repo.name, seven_days_ago.clone()).await?;
-                for pr in _repo_prs {
-                    let _ = repo_scrape.process_pr(&pr);
-                }
+async fn run_tui<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
+    loop {
+        // Draw UI
+        terminal.draw(|f| ui(f, app))?;
 
-                println!("{:#?}", repo_scrape);
-            }
-            page += 1;
+        // Handle events
+        handle_events(app)?;
+
+        // Check if we should quit
+        if app.should_quit {
+            break;
         }
     }
     Ok(())
