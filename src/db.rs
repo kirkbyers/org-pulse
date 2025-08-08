@@ -275,6 +275,61 @@ impl Scrape {
         
         Ok(())
     }
+
+    pub async fn list_all(pool_con: &mut PoolConn) -> Result<Vec<crate::stats::ScrapeInfo>> {
+        let scrape_rows: Vec<(i64, DateTime<Utc>, DateTime<Utc>)> = query_as("
+            SELECT id, start_dt, end_dt
+            FROM scrapes
+            ORDER BY start_dt DESC;
+        ").fetch_all(pool_con.as_mut()).await?;
+
+        let mut scrape_infos = Vec::new();
+        for row in scrape_rows {
+            // Count repos for this scrape
+            let repo_count: (i64,) = query_as("
+                SELECT COUNT(*) 
+                FROM repo_scrapes 
+                WHERE scrape_id = $1;
+            ").bind(row.0).fetch_one(pool_con.as_mut()).await?;
+
+            scrape_infos.push(crate::stats::ScrapeInfo {
+                id: row.0,
+                start_dt: row.1,
+                end_dt: row.2,
+                repo_count: repo_count.0,
+            });
+        }
+
+        Ok(scrape_infos)
+    }
+
+    pub async fn get_latest(pool_con: &mut PoolConn) -> Result<Option<crate::stats::ScrapeInfo>> {
+        let latest_scrape_result: Result<(i64, DateTime<Utc>, DateTime<Utc>), _> = query_as("
+            SELECT id, start_dt, end_dt
+            FROM scrapes
+            ORDER BY start_dt DESC
+            LIMIT 1;
+        ").fetch_one(pool_con.as_mut()).await;
+
+        match latest_scrape_result {
+            Ok(row) => {
+                // Count repos for this scrape
+                let repo_count: (i64,) = query_as("
+                    SELECT COUNT(*) 
+                    FROM repo_scrapes 
+                    WHERE scrape_id = $1;
+                ").bind(row.0).fetch_one(pool_con.as_mut()).await?;
+
+                Ok(Some(crate::stats::ScrapeInfo {
+                    id: row.0,
+                    start_dt: row.1,
+                    end_dt: row.2,
+                    repo_count: repo_count.0,
+                }))
+            }
+            Err(_) => Ok(None),
+        }
+    }
 }
 
 pub struct RepoScrape {
@@ -441,4 +496,111 @@ impl ContributorScrapes {
             .await?;
         Ok(())
     }
+}
+
+// Statistics query functions for TUI
+
+pub async fn get_org_stats(pool_con: &mut PoolConn, scrape_id: i64) -> Result<Vec<crate::stats::OrgStats>> {
+    let org_stats_rows: Vec<(String, i64, i64, i64, i64)> = query_as("
+        SELECT 
+            o.name,
+            SUM(rs.commits) as total_commits,
+            SUM(rs.lines) as total_lines,
+            COUNT(DISTINCT rs.repo_id) as repo_count,
+            COUNT(DISTINCT cs.contributor_id) as contributor_count
+        FROM orgs o
+        JOIN repo_scrapes rs ON o.id = rs.org_id
+        LEFT JOIN contributor_scrapes cs ON rs.id = cs.repo_scrape_id
+        WHERE rs.scrape_id = $1
+        GROUP BY o.id, o.name
+        ORDER BY total_commits DESC;
+    ").bind(scrape_id).fetch_all(pool_con.as_mut()).await?;
+
+    let mut org_stats = Vec::new();
+    for row in org_stats_rows {
+        org_stats.push(crate::stats::OrgStats {
+            name: row.0,
+            total_commits: row.1,
+            total_lines: row.2,
+            repo_count: row.3,
+            contributor_count: row.4,
+        });
+    }
+
+    Ok(org_stats)
+}
+
+pub async fn get_repo_stats(pool_con: &mut PoolConn, scrape_id: i64) -> Result<Vec<crate::stats::RepoStats>> {
+    let repo_stats_rows: Vec<(String, String, i64, i64, i64, i64)> = query_as("
+        SELECT 
+            o.name as org_name,
+            r.name as repo_name,
+            rs.commits,
+            rs.lines,
+            rs.prs,
+            COUNT(DISTINCT cs.contributor_id) as contributor_count
+        FROM repo_scrapes rs
+        JOIN orgs o ON rs.org_id = o.id
+        JOIN repos r ON rs.repo_id = r.id
+        LEFT JOIN contributor_scrapes cs ON rs.id = cs.repo_scrape_id
+        WHERE rs.scrape_id = $1
+        GROUP BY rs.id, o.name, r.name, rs.commits, rs.lines, rs.prs
+        ORDER BY rs.commits DESC;
+    ").bind(scrape_id).fetch_all(pool_con.as_mut()).await?;
+
+    let mut repo_stats = Vec::new();
+    for row in repo_stats_rows {
+        repo_stats.push(crate::stats::RepoStats {
+            org_name: row.0,
+            repo_name: row.1,
+            commits: row.2,
+            lines: row.3,
+            prs: row.4,
+            contributor_count: row.5,
+        });
+    }
+
+    Ok(repo_stats)
+}
+
+pub async fn get_contributor_stats(pool_con: &mut PoolConn, scrape_id: i64) -> Result<Vec<crate::stats::ContributorStats>> {
+    let contributor_stats_rows: Vec<(String, i64, i64, i64)> = query_as("
+        SELECT 
+            c.username,
+            SUM(cs.commits) as total_commits,
+            SUM(cs.lines) as total_lines,
+            COUNT(DISTINCT rs.repo_id) as repo_count
+        FROM contributors c
+        JOIN contributor_scrapes cs ON c.id = cs.contributor_id
+        JOIN repo_scrapes rs ON cs.repo_scrape_id = rs.id
+        WHERE rs.scrape_id = $1
+        GROUP BY c.id, c.username
+        ORDER BY total_commits DESC;
+    ").bind(scrape_id).fetch_all(pool_con.as_mut()).await?;
+
+    let mut contributor_stats = Vec::new();
+    for row in contributor_stats_rows {
+        // Get the list of orgs this contributor worked in
+        let org_names: Vec<(String,)> = query_as("
+            SELECT DISTINCT o.name
+            FROM contributors c
+            JOIN contributor_scrapes cs ON c.id = cs.contributor_id
+            JOIN repo_scrapes rs ON cs.repo_scrape_id = rs.id
+            JOIN orgs o ON rs.org_id = o.id
+            WHERE c.username = $1 AND rs.scrape_id = $2
+            ORDER BY o.name;
+        ").bind(&row.0).bind(scrape_id).fetch_all(pool_con.as_mut()).await?;
+
+        let orgs: Vec<String> = org_names.into_iter().map(|org| org.0).collect();
+
+        contributor_stats.push(crate::stats::ContributorStats {
+            username: row.0,
+            total_commits: row.1,
+            total_lines: row.2,
+            repo_count: row.3,
+            orgs,
+        });
+    }
+
+    Ok(contributor_stats)
 }

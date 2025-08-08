@@ -53,13 +53,16 @@
 - [x] Updated imports and module exports to use new stats module
 - [x] Maintained clean separation between app state and statistics data structures
 
-### Task 2.3: Extend Database with TUI Queries
-- [ ] Add `Scrape::list_all()` method to get all scrapes
-- [ ] Add `Scrape::get_latest()` method to get most recent scrape
-- [ ] Add `get_org_stats(pool, scrape_id)` function
-- [ ] Add `get_repo_stats(pool, scrape_id)` function  
-- [ ] Add `get_contributor_stats(pool, scrape_id)` function
-- [ ] Test all new database functions
+### Task 2.3: Extend Database with TUI Queries ✅
+- [x] Add `Scrape::list_all()` method to get all scrapes
+- [x] Add `Scrape::get_latest()` method to get most recent scrape
+- [x] Add `get_org_stats(pool, scrape_id)` function
+- [x] Add `get_repo_stats(pool, scrape_id)` function  
+- [x] Add `get_contributor_stats(pool, scrape_id)` function
+- [x] Test all new database functions
+- [x] Implemented comprehensive SQL queries with proper aggregation
+- [x] Added repo counting and contributor organization mapping
+- [x] All functions return properly structured statistics data
 
 ### Task 2.4: Data Loading
 - [ ] Implement data loading in App initialization
