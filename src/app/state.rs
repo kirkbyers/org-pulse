@@ -1,4 +1,4 @@
-use crate::stats::{ViewData, ScrapeInfo};
+use crate::stats::{ViewData, ScrapeInfo, OrgStats, RepoStats, ContributorStats};
 use crate::db::{new_pool, Scrape, get_org_stats, get_repo_stats, get_contributor_stats};
 use anyhow::Result;
 
@@ -23,7 +23,7 @@ pub enum View {
     Contributors,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SortField {
     Name,
     Commits,
@@ -32,7 +32,7 @@ pub enum SortField {
     Prs,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SortOrder {
     Ascending,
     Descending,
@@ -108,6 +108,7 @@ impl App {
             SortOrder::Ascending => SortOrder::Descending,
             SortOrder::Descending => SortOrder::Ascending,
         };
+        self.apply_sort();
     }
 
     pub fn set_sort_field(&mut self, field: SortField) {
@@ -117,6 +118,27 @@ impl App {
         } else {
             self.toggle_sort_order();
         }
+        self.apply_sort();
+    }
+
+    pub fn apply_sort(&mut self) {
+        let sort_field = self.sort_field;
+        let sort_order = self.sort_order;
+        
+        match &mut self.data {
+            ViewData::Orgs(orgs) => {
+                Self::sort_orgs_static(orgs, sort_field, sort_order);
+            }
+            ViewData::Repos(repos) => {
+                Self::sort_repos_static(repos, sort_field, sort_order);
+            }
+            ViewData::Contributors(contributors) => {
+                Self::sort_contributors_static(contributors, sort_field, sort_order);
+            }
+            ViewData::Loading | ViewData::Error(_) => {}
+        }
+        // Reset selection to top after sorting
+        self.selected_index = 0;
     }
 
     pub fn move_selection_up(&mut self) {
@@ -165,6 +187,8 @@ impl App {
                     self.data = ViewData::Contributors(contributor_stats);
                 }
             }
+            // Apply current sort after loading data
+            self.apply_sort();
         } else {
             self.data = ViewData::Error("No scrape selected".to_string());
         }
@@ -186,5 +210,113 @@ impl App {
             self.switch_view_with_data(view).await?;
         }
         Ok(())
+    }
+
+    fn sort_orgs_static(orgs: &mut Vec<OrgStats>, sort_field: SortField, sort_order: SortOrder) {
+        match sort_field {
+            SortField::Name => {
+                orgs.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.name.cmp(&b.name),
+                    SortOrder::Descending => b.name.cmp(&a.name),
+                });
+            }
+            SortField::Commits => {
+                orgs.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.total_commits.cmp(&b.total_commits),
+                    SortOrder::Descending => b.total_commits.cmp(&a.total_commits),
+                });
+            }
+            SortField::Lines => {
+                orgs.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.total_lines.cmp(&b.total_lines),
+                    SortOrder::Descending => b.total_lines.cmp(&a.total_lines),
+                });
+            }
+            SortField::Repos => {
+                orgs.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.repo_count.cmp(&b.repo_count),
+                    SortOrder::Descending => b.repo_count.cmp(&a.repo_count),
+                });
+            }
+            SortField::Prs => {
+                // PRs not applicable to orgs, fallback to commits
+                orgs.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.total_commits.cmp(&b.total_commits),
+                    SortOrder::Descending => b.total_commits.cmp(&a.total_commits),
+                });
+            }
+        }
+    }
+
+    fn sort_repos_static(repos: &mut Vec<RepoStats>, sort_field: SortField, sort_order: SortOrder) {
+        match sort_field {
+            SortField::Name => {
+                repos.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.repo_name.cmp(&b.repo_name),
+                    SortOrder::Descending => b.repo_name.cmp(&a.repo_name),
+                });
+            }
+            SortField::Commits => {
+                repos.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.commits.cmp(&b.commits),
+                    SortOrder::Descending => b.commits.cmp(&a.commits),
+                });
+            }
+            SortField::Lines => {
+                repos.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.lines.cmp(&b.lines),
+                    SortOrder::Descending => b.lines.cmp(&a.lines),
+                });
+            }
+            SortField::Prs => {
+                repos.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.prs.cmp(&b.prs),
+                    SortOrder::Descending => b.prs.cmp(&a.prs),
+                });
+            }
+            SortField::Repos => {
+                // Repos field not applicable to repo view, fallback to commits
+                repos.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.commits.cmp(&b.commits),
+                    SortOrder::Descending => b.commits.cmp(&a.commits),
+                });
+            }
+        }
+    }
+
+    fn sort_contributors_static(contributors: &mut Vec<ContributorStats>, sort_field: SortField, sort_order: SortOrder) {
+        match sort_field {
+            SortField::Name => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.username.cmp(&b.username),
+                    SortOrder::Descending => b.username.cmp(&a.username),
+                });
+            }
+            SortField::Commits => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.total_commits.cmp(&b.total_commits),
+                    SortOrder::Descending => b.total_commits.cmp(&a.total_commits),
+                });
+            }
+            SortField::Lines => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.total_lines.cmp(&b.total_lines),
+                    SortOrder::Descending => b.total_lines.cmp(&a.total_lines),
+                });
+            }
+            SortField::Repos => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.repo_count.cmp(&b.repo_count),
+                    SortOrder::Descending => b.repo_count.cmp(&a.repo_count),
+                });
+            }
+            SortField::Prs => {
+                // PRs not applicable to contributors, fallback to commits
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.total_commits.cmp(&b.total_commits),
+                    SortOrder::Descending => b.total_commits.cmp(&a.total_commits),
+                });
+            }
+        }
     }
 }

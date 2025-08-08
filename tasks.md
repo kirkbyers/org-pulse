@@ -109,12 +109,12 @@
 
 ## Phase 4: Sorting and Polish
 
-### Task 4.1: Sorting Implementation
-- [ ] Add sort logic to app state
-- [ ] Implement keyboard handlers for sort keys (s, n, c, l, p, R)
-- [ ] Sort data when sort field/order changes
-- [ ] Update UI to show current sort
-- [ ] Test sorting works for all fields in all views
+### Task 4.1: Sorting Implementation ✅
+- [x] Add sort logic to app state
+- [x] Implement keyboard handlers for sort keys (s, n, c, l, p, R)
+- [x] Sort data when sort field/order changes
+- [x] Update UI to show current sort
+- [x] Test sorting works for all fields in all views
 
 ### Task 4.2: Scrape Selection
 - [ ] Add scrape selection mode/view
@@ -187,9 +187,9 @@
 ## Resume Notes
 
 ### Current State (Last Updated)
-- **Completed**: Phases 1, 2 & 3 (all tasks complete)
-- **Next Task**: Task 4.1: Sorting Implementation
-- **Key Achievement**: Complete core TUI functionality with navigation, tables, and enhanced UI
+- **Completed**: Phases 1, 2 & 3, Task 4.1
+- **Next Task**: Task 4.2: Scrape Selection
+- **Key Achievement**: Complete sorting system with multi-field sorting across all views
 
 ### Recent Progress Summary
 1. ✅ **Phase 1**: Complete TUI infrastructure (dependencies, structure, scraper separation, basic app)
@@ -199,6 +199,7 @@
   - ✅ **Task 3.2**: Complete table rendering (proper ratatui tables with headers, formatting, and responsive layout)
   - ✅ **Task 3.3**: Complete navigation system (up/down/j/k keys, row highlighting, wrap-around selection)
   - ✅ **Task 3.4**: Enhanced header and footer with comprehensive UI information
+4. ✅ **Task 4.1**: Complete sorting implementation with multi-field support and keyboard shortcuts
 
 ### Key Technical Implementation Details
 - **App Structure**: `src/app/` with state.rs, events.rs, ui.rs modules
@@ -260,6 +261,22 @@ get_contributor_stats(pool, scrape_id) -> Vec<ContributorStats>
 - Enhanced header with selection position display (current/total format)
 - Reorganized footer into logical groups: Navigation | Views | Sort | Status
 - Improved visual layout with proper spacing and categorization
+
+### Task 4.1 Implementation Notes ✅
+**Completed Features:**
+- ✅ **Multi-field Sorting**: Complete sorting support for Name, Commits, Lines, Repos, PRs across all views
+- ✅ **Keyboard Shortcuts**: All sort keys working (s: toggle order, n: name, c: commits, l: lines, p: PRs, R: repos)
+- ✅ **Dynamic Sorting**: Data automatically sorted when sort field or order changes
+- ✅ **View-specific Logic**: Smart handling of inapplicable fields (e.g., PRs field in org view falls back to commits)
+- ✅ **Selection Reset**: Selection automatically resets to top after sorting for consistent UX
+- ✅ **Real-time Updates**: Footer shows current sort field and order with directional arrows
+
+**Technical Implementation:**
+- Added `Copy` trait to `SortField` and `SortOrder` enums for efficient copying
+- Implemented static sort methods (`sort_orgs_static`, `sort_repos_static`, `sort_contributors_static`) to avoid borrow checker conflicts
+- Added `apply_sort()` method that automatically applies sorting to current data
+- Integrated sorting into data refresh cycle so initial data loads are properly sorted
+- Fallback sorting logic handles inapplicable fields gracefully (PRs → commits for orgs/contributors)
 
 ### File Locations
 - Main TUI: `src/main.rs` 
