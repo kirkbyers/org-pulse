@@ -60,6 +60,9 @@ async fn run_tui<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
         // Handle events
         handle_events(app)?;
 
+        // Handle pending view switches
+        app.handle_pending_view_switch().await?;
+
         // Check if we should quit
         if app.should_quit {
             break;

@@ -13,6 +13,7 @@ pub struct App {
     pub selected_index: usize,
     pub should_quit: bool,
     pub is_scraping: bool,
+    pub pending_view_switch: Option<View>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +50,7 @@ impl Default for App {
             selected_index: 0,
             should_quit: false,
             is_scraping: false,
+            pending_view_switch: None,
         }
     }
 }
@@ -92,6 +94,12 @@ impl App {
             self.current_view = view;
             self.selected_index = 0;
             self.data = ViewData::Loading;
+        }
+    }
+
+    pub fn request_view_switch(&mut self, view: View) {
+        if self.current_view != view {
+            self.pending_view_switch = Some(view);
         }
     }
 
@@ -169,6 +177,13 @@ impl App {
             self.selected_index = 0;
             self.data = ViewData::Loading;
             self.refresh_current_view_data().await?;
+        }
+        Ok(())
+    }
+
+    pub async fn handle_pending_view_switch(&mut self) -> Result<()> {
+        if let Some(view) = self.pending_view_switch.take() {
+            self.switch_view_with_data(view).await?;
         }
         Ok(())
     }

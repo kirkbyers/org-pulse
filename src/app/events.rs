@@ -19,9 +19,9 @@ fn handle_key_event(key: KeyEvent, app: &mut App) -> Result<()> {
 
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => app.quit(),
-        KeyCode::Char('o') => app.switch_view(View::Org),
-        KeyCode::Char('r') => app.switch_view(View::Repo),
-        KeyCode::Char('u') => app.switch_view(View::Contributors),
+        KeyCode::Char('o') => app.request_view_switch(View::Org),
+        KeyCode::Char('r') => app.request_view_switch(View::Repo),
+        KeyCode::Char('u') => app.request_view_switch(View::Contributors),
         KeyCode::Up | KeyCode::Char('k') => app.move_selection_up(),
         KeyCode::Down | KeyCode::Char('j') => app.move_selection_down(),
         KeyCode::Char('s') => app.toggle_sort_order(),

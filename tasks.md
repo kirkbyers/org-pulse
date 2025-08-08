@@ -77,12 +77,15 @@
 
 ## Phase 3: Core TUI Functionality
 
-### Task 3.1: View Management
-- [ ] Implement view switching logic in app state
-- [ ] Add keyboard handlers for 'o', 'r', 'u' keys
-- [ ] Update UI to show current view
-- [ ] Refresh data when switching views
-- [ ] Test view switching works
+### Task 3.1: View Management ✅
+- [x] Implement view switching logic in app state
+- [x] Add keyboard handlers for 'o', 'r', 'u' keys
+- [x] Update UI to show current view
+- [x] Refresh data when switching views
+- [x] Test view switching works
+- [x] Added pending view switch mechanism for async data loading
+- [x] Integrated view switching with database queries
+- [x] Updated main TUI loop to handle async view switches
 
 ### Task 3.2: Table Rendering
 - [ ] Implement org stats table in UI
@@ -181,4 +184,58 @@
 - [ ] Phase 4: Sorting and Polish
 - [ ] Phase 5: Final Testing and Documentation
 
-*Start with Phase 1, Task 1.1*
+## Resume Notes
+
+### Current State (Last Updated)
+- **Completed**: Phases 1 & 2, Task 3.1 
+- **Next Task**: Task 3.2: Table Rendering
+- **Key Achievement**: Full database integration with async data loading
+
+### Recent Progress Summary
+1. ✅ **Phase 1**: Complete TUI infrastructure (dependencies, structure, scraper separation, basic app)
+2. ✅ **Phase 2**: Complete database integration (architecture fixes, stats structures, TUI queries, data loading)  
+3. ✅ **Task 3.1**: Complete view management (o/r/u key switching with async data refresh)
+
+### Key Technical Implementation Details
+- **App Structure**: `src/app/` with state.rs, events.rs, ui.rs modules
+- **Database**: `src/db.rs` with comprehensive TUI query functions (`get_org_stats`, `get_repo_stats`, `get_contributor_stats`)
+- **Statistics**: `src/stats.rs` with all data structures (`OrgStats`, `RepoStats`, `ContributorStats`, `ViewData`)
+- **Async Integration**: Pending view switch mechanism bridges sync events with async data loading
+- **Main Loop**: Handles UI rendering, events, and async view switch processing
+
+### Database Query Functions Available
+```rust
+// In src/db.rs - ready to use
+Scrape::list_all(pool) -> Vec<ScrapeInfo>
+Scrape::get_latest(pool) -> Option<ScrapeInfo>
+get_org_stats(pool, scrape_id) -> Vec<OrgStats>
+get_repo_stats(pool, scrape_id) -> Vec<RepoStats>
+get_contributor_stats(pool, scrape_id) -> Vec<ContributorStats>
+```
+
+### Next Steps for Task 3.2: Table Rendering
+1. **Update UI functions**: Replace placeholder text in `draw_org_table()`, `draw_repo_table()`, `draw_contributor_table()` 
+2. **Implement ratatui Tables**: Use `Table` widget with proper columns and data formatting
+3. **Headers**: Add column headers for each stat type (Name, Commits, Lines, Repos, PRs, etc.)
+4. **Data Formatting**: Format numbers, handle empty states, ensure proper alignment
+
+### File Locations
+- Main TUI: `src/main.rs` 
+- App State: `src/app/state.rs`
+- Events: `src/app/events.rs`
+- UI Rendering: `src/app/ui.rs` (contains table stubs to implement)
+- Database: `src/db.rs`
+- Statistics: `src/stats.rs`
+
+### Testing Notes
+- Project compiles successfully with `cargo check` and `cargo build`
+- TUI loads with real database data (if available)
+- View switching works with 'o', 'r', 'u' keys
+- Quit works with 'q' key
+- Error handling for missing scrape data
+
+### Architecture Notes
+- Clean separation between sync UI events and async database operations
+- All data structures properly organized in dedicated modules
+- Database queries return structured data ready for table display
+- App state includes pending view switch mechanism for responsive UI
