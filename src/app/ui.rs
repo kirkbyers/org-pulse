@@ -1,12 +1,22 @@
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    widgets::{Block, Borders, Paragraph},
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, Paragraph, Row, Table, Cell},
     Frame,
 };
 
 use super::state::{App, View, SortField, SortOrder};
 use crate::stats::ViewData;
+
+fn format_number(num: i64) -> String {
+    if num >= 1_000_000 {
+        format!("{:.1}M", num as f64 / 1_000_000.0)
+    } else if num >= 1_000 {
+        format!("{:.1}K", num as f64 / 1_000.0)
+    } else {
+        num.to_string()
+    }
+}
 
 pub fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -64,28 +74,147 @@ fn draw_main_content(f: &mut Frame, area: Rect, app: &App) {
     }
 }
 
-fn draw_org_table(f: &mut Frame, area: Rect, _app: &App) {
-    // TODO: Implement org table rendering
-    let placeholder = Paragraph::new("Organizations view (TODO)")
-        .block(Block::default().borders(Borders::ALL))
-        .alignment(Alignment::Center);
-    f.render_widget(placeholder, area);
+fn draw_org_table(f: &mut Frame, area: Rect, app: &App) {
+    if let ViewData::Orgs(orgs) = &app.data {
+        let header_cells = ["Organization", "Commits", "Lines", "Repos", "Contributors"]
+            .iter()
+            .map(|h| Cell::from(*h).style(Style::default().add_modifier(Modifier::BOLD)));
+        
+        let header = Row::new(header_cells)
+            .style(Style::default().bg(Color::Blue).fg(Color::White))
+            .height(1);
+
+        let rows: Vec<Row> = orgs.iter().map(|org| {
+            let cells = vec![
+                Cell::from(org.name.clone()),
+                Cell::from(format_number(org.total_commits)),
+                Cell::from(format_number(org.total_lines)),
+                Cell::from(format_number(org.repo_count)),
+                Cell::from(format_number(org.contributor_count)),
+            ];
+            Row::new(cells).height(1)
+        }).collect();
+
+        let table = Table::new(
+            rows,
+            &[
+                Constraint::Percentage(30), // Organization name
+                Constraint::Percentage(15), // Commits
+                Constraint::Percentage(15), // Lines 
+                Constraint::Percentage(15), // Repos
+                Constraint::Percentage(25), // Contributors
+            ]
+        )
+            .header(header)
+            .block(Block::default().borders(Borders::ALL).title("Organizations"))
+            .column_spacing(1);
+
+        f.render_widget(table, area);
+    } else {
+        let placeholder = Paragraph::new("No organization data")
+            .block(Block::default().borders(Borders::ALL))
+            .alignment(Alignment::Center);
+        f.render_widget(placeholder, area);
+    }
 }
 
-fn draw_repo_table(f: &mut Frame, area: Rect, _app: &App) {
-    // TODO: Implement repo table rendering  
-    let placeholder = Paragraph::new("Repositories view (TODO)")
-        .block(Block::default().borders(Borders::ALL))
-        .alignment(Alignment::Center);
-    f.render_widget(placeholder, area);
+fn draw_repo_table(f: &mut Frame, area: Rect, app: &App) {
+    if let ViewData::Repos(repos) = &app.data {
+        let header_cells = ["Organization", "Repository", "Commits", "Lines", "PRs", "Contributors"]
+            .iter()
+            .map(|h| Cell::from(*h).style(Style::default().add_modifier(Modifier::BOLD)));
+        
+        let header = Row::new(header_cells)
+            .style(Style::default().bg(Color::Blue).fg(Color::White))
+            .height(1);
+
+        let rows: Vec<Row> = repos.iter().map(|repo| {
+            let cells = vec![
+                Cell::from(repo.org_name.clone()),
+                Cell::from(repo.repo_name.clone()),
+                Cell::from(format_number(repo.commits)),
+                Cell::from(format_number(repo.lines)),
+                Cell::from(format_number(repo.prs)),
+                Cell::from(format_number(repo.contributor_count)),
+            ];
+            Row::new(cells).height(1)
+        }).collect();
+
+        let table = Table::new(
+            rows,
+            &[
+                Constraint::Percentage(20), // Organization name
+                Constraint::Percentage(25), // Repository name
+                Constraint::Percentage(12), // Commits
+                Constraint::Percentage(12), // Lines 
+                Constraint::Percentage(12), // PRs
+                Constraint::Percentage(19), // Contributors
+            ]
+        )
+            .header(header)
+            .block(Block::default().borders(Borders::ALL).title("Repositories"))
+            .column_spacing(1);
+
+        f.render_widget(table, area);
+    } else {
+        let placeholder = Paragraph::new("No repository data")
+            .block(Block::default().borders(Borders::ALL))
+            .alignment(Alignment::Center);
+        f.render_widget(placeholder, area);
+    }
 }
 
-fn draw_contributor_table(f: &mut Frame, area: Rect, _app: &App) {
-    // TODO: Implement contributor table rendering
-    let placeholder = Paragraph::new("Contributors view (TODO)")
-        .block(Block::default().borders(Borders::ALL))
-        .alignment(Alignment::Center);
-    f.render_widget(placeholder, area);
+fn draw_contributor_table(f: &mut Frame, area: Rect, app: &App) {
+    if let ViewData::Contributors(contributors) = &app.data {
+        let header_cells = ["Username", "Commits", "Lines", "Repos", "Organizations"]
+            .iter()
+            .map(|h| Cell::from(*h).style(Style::default().add_modifier(Modifier::BOLD)));
+        
+        let header = Row::new(header_cells)
+            .style(Style::default().bg(Color::Blue).fg(Color::White))
+            .height(1);
+
+        let rows: Vec<Row> = contributors.iter().map(|contributor| {
+            let orgs_display = if contributor.orgs.len() <= 2 {
+                contributor.orgs.join(", ")
+            } else {
+                format!("{}, {} (+{})", 
+                    contributor.orgs[0], 
+                    contributor.orgs[1], 
+                    contributor.orgs.len() - 2)
+            };
+
+            let cells = vec![
+                Cell::from(contributor.username.clone()),
+                Cell::from(format_number(contributor.total_commits)),
+                Cell::from(format_number(contributor.total_lines)),
+                Cell::from(format_number(contributor.repo_count)),
+                Cell::from(orgs_display),
+            ];
+            Row::new(cells).height(1)
+        }).collect();
+
+        let table = Table::new(
+            rows,
+            &[
+                Constraint::Percentage(20), // Username
+                Constraint::Percentage(15), // Commits
+                Constraint::Percentage(15), // Lines 
+                Constraint::Percentage(15), // Repos
+                Constraint::Percentage(35), // Organizations
+            ]
+        )
+            .header(header)
+            .block(Block::default().borders(Borders::ALL).title("Contributors"))
+            .column_spacing(1);
+
+        f.render_widget(table, area);
+    } else {
+        let placeholder = Paragraph::new("No contributor data")
+            .block(Block::default().borders(Borders::ALL))
+            .alignment(Alignment::Center);
+        f.render_widget(placeholder, area);
+    }
 }
 
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {

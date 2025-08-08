@@ -87,12 +87,12 @@
 - [x] Integrated view switching with database queries
 - [x] Updated main TUI loop to handle async view switches
 
-### Task 3.2: Table Rendering
-- [ ] Implement org stats table in UI
-- [ ] Implement repo stats table in UI
-- [ ] Implement contributor stats table in UI
-- [ ] Add table headers and formatting
-- [ ] Test all three views display correctly
+### Task 3.2: Table Rendering ✅
+- [x] Implement org stats table in UI
+- [x] Implement repo stats table in UI
+- [x] Implement contributor stats table in UI
+- [x] Add table headers and formatting
+- [x] Test all three views display correctly
 
 ### Task 3.3: Navigation
 - [ ] Add selection index to app state
@@ -187,14 +187,15 @@
 ## Resume Notes
 
 ### Current State (Last Updated)
-- **Completed**: Phases 1 & 2, Task 3.1 
-- **Next Task**: Task 3.2: Table Rendering
-- **Key Achievement**: Full database integration with async data loading
+- **Completed**: Phases 1 & 2, Tasks 3.1 & 3.2
+- **Next Task**: Task 3.3: Navigation
+- **Key Achievement**: Complete table rendering with proper formatting and data display
 
 ### Recent Progress Summary
 1. ✅ **Phase 1**: Complete TUI infrastructure (dependencies, structure, scraper separation, basic app)
 2. ✅ **Phase 2**: Complete database integration (architecture fixes, stats structures, TUI queries, data loading)  
 3. ✅ **Task 3.1**: Complete view management (o/r/u key switching with async data refresh)
+4. ✅ **Task 3.2**: Complete table rendering (proper ratatui tables with headers, formatting, and responsive layout)
 
 ### Key Technical Implementation Details
 - **App Structure**: `src/app/` with state.rs, events.rs, ui.rs modules
@@ -213,11 +214,19 @@ get_repo_stats(pool, scrape_id) -> Vec<RepoStats>
 get_contributor_stats(pool, scrape_id) -> Vec<ContributorStats>
 ```
 
-### Next Steps for Task 3.2: Table Rendering
-1. **Update UI functions**: Replace placeholder text in `draw_org_table()`, `draw_repo_table()`, `draw_contributor_table()` 
-2. **Implement ratatui Tables**: Use `Table` widget with proper columns and data formatting
-3. **Headers**: Add column headers for each stat type (Name, Commits, Lines, Repos, PRs, etc.)
-4. **Data Formatting**: Format numbers, handle empty states, ensure proper alignment
+### Task 3.2 Implementation Notes ✅
+**Completed Features:**
+- ✅ **Table Implementation**: All three table views (Organizations, Repositories, Contributors) now use proper ratatui Table widgets
+- ✅ **Column Headers**: Added styled headers with bold formatting and blue background for all views  
+- ✅ **Data Formatting**: Implemented `format_number()` helper for readable numeric display (1.5K, 2.3M format)
+- ✅ **Responsive Layout**: Column widths optimized for each view type with appropriate percentages
+- ✅ **Empty State Handling**: Graceful display when no data is available for any view
+- ✅ **Organization Display**: Added smart truncation for contributor organizations (shows first 2 + count)
+
+**Technical Implementation:**
+- Fixed ratatui 0.26 API compatibility (Table::new requires widths parameter)
+- Added proper error handling for data loading states
+- All table rendering functions now extract data from ViewData enum correctly
 
 ### File Locations
 - Main TUI: `src/main.rs` 
