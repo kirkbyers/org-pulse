@@ -20,9 +20,12 @@ fn handle_key_event(key: KeyEvent, app: &mut App) -> Result<()> {
     match key.code {
         KeyCode::Char('q') => app.quit(),
         KeyCode::Esc => {
-            // Exit scrape selection mode back to data view
+            // Handle back navigation
             if app.current_view == View::ScrapeSelection {
                 app.request_view_switch(View::Org);
+            } else if matches!(app.current_view, View::OrgDetail | View::RepoDetail | View::ContributorDetail) {
+                // Navigate back from detail views - will be handled in main loop
+                app.request_navigate_back();
             } else {
                 app.quit();
             }
@@ -57,8 +60,10 @@ fn handle_key_event(key: KeyEvent, app: &mut App) -> Result<()> {
                 // Select the current scrape and return to org view
                 // This will be handled in the main loop as it's async
                 app.pending_view_switch = Some(View::Org);
+            } else if !matches!(app.current_view, View::ScrapeSelection) && !app.is_scraping {
+                // Handle drill-down navigation - will be handled in main loop as it's async
+                app.request_drill_down();
             }
-            // TODO: Handle drill-down navigation for other views
         }
         KeyCode::Char('s') => {
             if app.current_view != View::ScrapeSelection {

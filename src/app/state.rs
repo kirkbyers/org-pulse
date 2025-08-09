@@ -1,7 +1,14 @@
 use crate::stats::{ViewData, ScrapeInfo, OrgStats, RepoStats, ContributorStats};
-use crate::db::{new_pool, Scrape, get_org_stats, get_repo_stats, get_contributor_stats};
+use crate::db::{new_pool, Scrape, get_org_stats, get_repo_stats, get_contributor_stats, get_org_detail, get_repo_detail, get_contributor_detail};
 use crate::scraper;
 use anyhow::Result;
+
+#[derive(Debug, Clone)]
+enum DrillType {
+    Org(String),
+    Repo(String, String), // org_name, repo_name
+    Contributor(String),
+}
 
 #[derive(Debug, Clone)]
 pub struct App {
@@ -18,6 +25,9 @@ pub struct App {
     pub scraping_error: Option<String>,
     pub pending_view_switch: Option<View>,
     pub start_scraping_requested: bool,
+    pub drill_down_requested: bool,
+    pub navigate_back_requested: bool,
+    pub view_history: Vec<(View, String)>, // (view, context) for back navigation
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -26,6 +36,9 @@ pub enum View {
     Repo,
     Contributors,
     ScrapeSelection,
+    OrgDetail,
+    RepoDetail,
+    ContributorDetail,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -59,6 +72,9 @@ impl Default for App {
             scraping_error: None,
             pending_view_switch: None,
             start_scraping_requested: false,
+            drill_down_requested: false,
+            navigate_back_requested: false,
+            view_history: Vec::new(),
         }
     }
 }
@@ -147,6 +163,15 @@ impl App {
             ViewData::Contributors(contributors) => {
                 Self::sort_contributors_static(contributors, sort_field, sort_order);
             }
+            ViewData::OrgDetail(detail) => {
+                Self::sort_repos_static(&mut detail.repos, sort_field, sort_order);
+            }
+            ViewData::RepoDetail(detail) => {
+                Self::sort_repo_contributors_static(&mut detail.contributors, sort_field, sort_order);
+            }
+            ViewData::ContributorDetail(detail) => {
+                Self::sort_contributor_repos_static(&mut detail.contributions, sort_field, sort_order);
+            }
             ViewData::Loading | ViewData::Error(_) => {}
         }
         // Reset selection to top after sorting
@@ -192,6 +217,9 @@ impl App {
             ViewData::Orgs(orgs) => orgs.len(),
             ViewData::Repos(repos) => repos.len(),
             ViewData::Contributors(contributors) => contributors.len(),
+            ViewData::OrgDetail(detail) => detail.repos.len(),
+            ViewData::RepoDetail(detail) => detail.contributors.len(),
+            ViewData::ContributorDetail(detail) => detail.contributions.len(),
             ViewData::Loading | ViewData::Error(_) => 0,
         }
     }
@@ -216,6 +244,10 @@ impl App {
                 }
                 View::ScrapeSelection => {
                     // No data loading needed for scrape selection view
+                }
+                View::OrgDetail | View::RepoDetail | View::ContributorDetail => {
+                    // Detail views are loaded through drill-down, not refresh_current_view_data
+                    // This shouldn't be called for detail views, but we handle it gracefully
                 }
             }
             // Apply current sort after loading data
@@ -366,8 +398,88 @@ impl App {
         }
     }
 
+    fn sort_repo_contributors_static(contributors: &mut Vec<crate::stats::RepoContributor>, sort_field: SortField, sort_order: SortOrder) {
+        match sort_field {
+            SortField::Name => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.username.cmp(&b.username),
+                    SortOrder::Descending => b.username.cmp(&a.username),
+                });
+            }
+            SortField::Commits => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.commits.cmp(&b.commits),
+                    SortOrder::Descending => b.commits.cmp(&a.commits),
+                });
+            }
+            SortField::Lines => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.lines.cmp(&b.lines),
+                    SortOrder::Descending => b.lines.cmp(&a.lines),
+                });
+            }
+            SortField::Prs => {
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.prs.cmp(&b.prs),
+                    SortOrder::Descending => b.prs.cmp(&a.prs),
+                });
+            }
+            SortField::Repos => {
+                // Repos not applicable to repo contributors, fallback to commits
+                contributors.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.commits.cmp(&b.commits),
+                    SortOrder::Descending => b.commits.cmp(&a.commits),
+                });
+            }
+        }
+    }
+
+    fn sort_contributor_repos_static(contributions: &mut Vec<crate::stats::ContributorRepo>, sort_field: SortField, sort_order: SortOrder) {
+        match sort_field {
+            SortField::Name => {
+                contributions.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.repo_name.cmp(&b.repo_name),
+                    SortOrder::Descending => b.repo_name.cmp(&a.repo_name),
+                });
+            }
+            SortField::Commits => {
+                contributions.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.commits.cmp(&b.commits),
+                    SortOrder::Descending => b.commits.cmp(&a.commits),
+                });
+            }
+            SortField::Lines => {
+                contributions.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.lines.cmp(&b.lines),
+                    SortOrder::Descending => b.lines.cmp(&a.lines),
+                });
+            }
+            SortField::Prs => {
+                contributions.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.prs.cmp(&b.prs),
+                    SortOrder::Descending => b.prs.cmp(&a.prs),
+                });
+            }
+            SortField::Repos => {
+                // Sort by repo name when repos field selected
+                contributions.sort_by(|a, b| match sort_order {
+                    SortOrder::Ascending => a.repo_name.cmp(&b.repo_name),
+                    SortOrder::Descending => b.repo_name.cmp(&a.repo_name),
+                });
+            }
+        }
+    }
+
     pub fn request_scraping(&mut self) {
         self.start_scraping_requested = true;
+    }
+
+    pub fn request_drill_down(&mut self) {
+        self.drill_down_requested = true;
+    }
+
+    pub fn request_navigate_back(&mut self) {
+        self.navigate_back_requested = true;
     }
 
     pub fn start_scraping(&mut self) {
@@ -418,5 +530,142 @@ impl App {
             }
         }
         Ok(())
+    }
+
+    pub async fn handle_navigation_requests(&mut self) -> Result<()> {
+        if self.drill_down_requested {
+            self.drill_down_requested = false;
+            self.drill_down().await?;
+        }
+        if self.navigate_back_requested {
+            self.navigate_back_requested = false;
+            self.navigate_back().await?;
+        }
+        Ok(())
+    }
+
+    // Drill-down navigation methods
+    async fn drill_down(&mut self) -> Result<()> {
+        if self.is_scraping {
+            return Ok(()); // Don't allow drill-down during scraping
+        }
+
+        if let Some(scrape_id) = self.current_scrape {
+            // Extract data to avoid borrow checker issues
+            let drill_info = match &self.data {
+                ViewData::Orgs(orgs) => {
+                    orgs.get(self.selected_index).map(|org| {
+                        (self.current_view.clone(), org.name.clone(), DrillType::Org(org.name.clone()))
+                    })
+                }
+                ViewData::Repos(repos) => {
+                    repos.get(self.selected_index).map(|repo| {
+                        let context = format!("{}/{}", repo.org_name, repo.repo_name);
+                        (self.current_view.clone(), context, DrillType::Repo(repo.org_name.clone(), repo.repo_name.clone()))
+                    })
+                }
+                ViewData::Contributors(contributors) => {
+                    contributors.get(self.selected_index).map(|contributor| {
+                        (self.current_view.clone(), contributor.username.clone(), DrillType::Contributor(contributor.username.clone()))
+                    })
+                }
+                ViewData::OrgDetail(detail) => {
+                    detail.repos.get(self.selected_index).map(|repo| {
+                        let context = format!("{}/{}", detail.org_name, repo.repo_name);
+                        (self.current_view.clone(), context, DrillType::Repo(repo.org_name.clone(), repo.repo_name.clone()))
+                    })
+                }
+                ViewData::RepoDetail(detail) => {
+                    detail.contributors.get(self.selected_index).map(|contributor| {
+                        (self.current_view.clone(), contributor.username.clone(), DrillType::Contributor(contributor.username.clone()))
+                    })
+                }
+                _ => None,
+            };
+
+            if let Some((view, context, drill_type)) = drill_info {
+                self.view_history.push((view, context));
+                match drill_type {
+                    DrillType::Org(org_name) => {
+                        self.drill_into_org(scrape_id, &org_name).await?;
+                    }
+                    DrillType::Repo(org_name, repo_name) => {
+                        self.drill_into_repo(scrape_id, &org_name, &repo_name).await?;
+                    }
+                    DrillType::Contributor(username) => {
+                        self.drill_into_contributor(scrape_id, &username).await?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn navigate_back(&mut self) -> Result<()> {
+        if let Some((previous_view, context)) = self.view_history.pop() {
+            self.current_view = previous_view;
+            self.selected_index = 0;
+            self.data = ViewData::Loading;
+            
+            // Reload the previous view data
+            match self.current_view {
+                View::Org => self.refresh_current_view_data().await?,
+                View::Repo => self.refresh_current_view_data().await?,
+                View::Contributors => self.refresh_current_view_data().await?,
+                View::OrgDetail => {
+                    if let Some(scrape_id) = self.current_scrape {
+                        let detail = get_org_detail(&mut self.get_db_connection().await?, scrape_id, &context).await?;
+                        self.data = ViewData::OrgDetail(detail);
+                    }
+                }
+                View::RepoDetail => {
+                    if let Some(scrape_id) = self.current_scrape {
+                        let parts: Vec<&str> = context.split('/').collect();
+                        if parts.len() == 2 {
+                            let detail = get_repo_detail(&mut self.get_db_connection().await?, scrape_id, parts[0], parts[1]).await?;
+                            self.data = ViewData::RepoDetail(detail);
+                        }
+                    }
+                }
+                _ => {}
+            }
+            self.apply_sort();
+        }
+        Ok(())
+    }
+
+    async fn drill_into_org(&mut self, scrape_id: i64, org_name: &str) -> Result<()> {
+        let mut db_conn = self.get_db_connection().await?;
+        let detail = get_org_detail(&mut db_conn, scrape_id, org_name).await?;
+        self.data = ViewData::OrgDetail(detail);
+        self.current_view = View::OrgDetail;
+        self.selected_index = 0;
+        self.apply_sort();
+        Ok(())
+    }
+
+    async fn drill_into_repo(&mut self, scrape_id: i64, org_name: &str, repo_name: &str) -> Result<()> {
+        let mut db_conn = self.get_db_connection().await?;
+        let detail = get_repo_detail(&mut db_conn, scrape_id, org_name, repo_name).await?;
+        self.data = ViewData::RepoDetail(detail);
+        self.current_view = View::RepoDetail;
+        self.selected_index = 0;
+        self.apply_sort();
+        Ok(())
+    }
+
+    async fn drill_into_contributor(&mut self, scrape_id: i64, username: &str) -> Result<()> {
+        let mut db_conn = self.get_db_connection().await?;
+        let detail = get_contributor_detail(&mut db_conn, scrape_id, username).await?;
+        self.data = ViewData::ContributorDetail(detail);
+        self.current_view = View::ContributorDetail;
+        self.selected_index = 0;
+        self.apply_sort();
+        Ok(())
+    }
+
+    async fn get_db_connection(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Sqlite>> {
+        let pool = new_pool().await?;
+        Ok(pool.acquire().await?)
     }
 }

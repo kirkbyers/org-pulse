@@ -63,6 +63,9 @@ async fn run_tui<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
         // Handle scraping requests
         app.handle_scraping_request().await?;
 
+        // Handle navigation requests
+        app.handle_navigation_requests().await?;
+
         // Handle pending view switches
         app.handle_pending_view_switch().await?;
 

@@ -69,14 +69,14 @@
 - [x] Refresh data after scrape completes
 - [x] Handle scrape errors gracefully
 
-### Task 4.4: Detail Views (Drill-down)
-- [ ] Add detail view state to App
-- [ ] Implement Enter key handling for drill-down:
-  - [ ] Org → List of repos in that org
-  - [ ] Repo → List of contributors for that repo
-  - [ ] Contributor → List of repo contributions
-- [ ] Add back navigation (Escape key)
-- [ ] Update UI for detail views
+### Task 4.4: Detail Views (Drill-down) ✅
+- [x] Add detail view state to App
+- [x] Implement Enter key handling for drill-down:
+  - [x] Org → List of repos in that org
+  - [x] Repo → List of contributors for that repo
+  - [x] Contributor → List of repo contributions
+- [x] Add back navigation (Escape key)
+- [x] Update UI for detail views
 
 ### Task 4.5: Error Handling and Polish
 - [ ] Add error display in UI
@@ -106,8 +106,8 @@
 
 ## Current Status
 - ✅ Phases 1-3: Complete TUI infrastructure, database integration, and core functionality
-- ✅ Tasks 4.1-4.3: Complete sorting, scrape selection, and background scraping
-- 🔄 Next: Task 4.4 Detail Views (Drill-down)
+- ✅ Tasks 4.1-4.4: Complete sorting, scrape selection, background scraping, and detail views
+- 🔄 Next: Task 4.5 Error Handling and Polish
 
 ## Key Implementation Files
 - **Main TUI**: `src/main.rs`
@@ -118,7 +118,7 @@
 - **Statistics**: `src/stats.rs`
 
 ## Next Steps
-**Task 4.4: Detail Views** - Add drill-down navigation from organizations to repos, repos to contributors, and contributors to repo contributions.
+**Task 4.5: Error Handling and Polish** - Add comprehensive error display, database connection error handling, and UI improvements.
 
 ### Task 4.3 Implementation Notes ✅
 **Completed Features:**
@@ -136,3 +136,21 @@
 - Added scraping overlay in UI that blocks interaction during scraping operation
 - Enhanced header with status indicators (🔄 SCRAPING... or ❌ ERROR messages)
 - Integrated refresh_after_scrape() to reload data and switch to newest scrape
+
+### Task 4.4 Implementation Notes ✅
+**Completed Features:**
+- ✅ **Detail View Data Structures**: Added OrgDetail, RepoDetail, ContributorDetail with RepoContributor and ContributorRepo
+- ✅ **Database Queries**: Implemented get_org_detail, get_repo_detail, get_contributor_detail functions with proper joins
+- ✅ **Navigation State**: Added view_history for back navigation and drill-down/back request flags
+- ✅ **Enter Key Drill-Down**: Enter key triggers drill-down navigation: Orgs→Repos, Repos→Contributors, Contributors→Contributions
+- ✅ **Escape Key Back Navigation**: Escape key navigates back through view history with context restoration
+- ✅ **UI Rendering**: Added draw_org_detail_table, draw_repo_detail_table, draw_contributor_detail_table functions
+- ✅ **Footer Updates**: Context-aware footer showing appropriate shortcuts for detail views
+- ✅ **Sorting Support**: Extended sorting to work with detail view data structures
+
+**Technical Implementation:**
+- Used DrillType enum to resolve borrow checker issues in drill_down method
+- Extended ViewData enum with detail variants and updated get_item_count/apply_sort methods
+- Added async navigation request handling in main loop (handle_navigation_requests)
+- Implemented proper context tracking for complex navigation scenarios (org/repo paths)
+- Detail views use same table rendering patterns as main views for consistency

@@ -44,6 +44,9 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
         View::Repo => "Repositories", 
         View::Contributors => "Contributors",
         View::ScrapeSelection => "Scrape Selection",
+        View::OrgDetail => "Organization Detail",
+        View::RepoDetail => "Repository Detail",
+        View::ContributorDetail => "Contributor Detail",
     };
 
     let (_item_count, selection_info) = match app.current_view {
@@ -111,6 +114,9 @@ fn draw_main_content(f: &mut Frame, area: Rect, app: &App) {
             ViewData::Orgs(_) => draw_org_table(f, area, app),
             ViewData::Repos(_) => draw_repo_table(f, area, app),
             ViewData::Contributors(_) => draw_contributor_table(f, area, app),
+            ViewData::OrgDetail(_) => draw_org_detail_table(f, area, app),
+            ViewData::RepoDetail(_) => draw_repo_detail_table(f, area, app),
+            ViewData::ContributorDetail(_) => draw_contributor_detail_table(f, area, app),
         }
     }
 }
@@ -336,8 +342,10 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     // Split footer into two lines for better readability
     let footer_line1 = if app.current_view == View::ScrapeSelection {
         "Navigation: ↑↓/j/k | Enter: Select | Esc/t: Back | q: Quit"
+    } else if matches!(app.current_view, View::OrgDetail | View::RepoDetail | View::ContributorDetail) {
+        "Navigation: ↑↓/j/k | Enter: Drill Down | Esc: Back | Sort: s/n/c/l/p/R | q: Quit"
     } else {
-        "Navigation: ↑↓/j/k | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | S: New Scrape | q: Quit"
+        "Navigation: ↑↓/j/k | Enter: Drill Down | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | S: New Scrape | q: Quit"
     };
     let footer_line2 = format!("{}", sort_info);
     
@@ -347,4 +355,118 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         .alignment(Alignment::Left);
     
     f.render_widget(footer, area);
+}
+
+// Detail view table rendering functions
+
+fn draw_org_detail_table(f: &mut Frame, area: Rect, app: &App) {
+    if let ViewData::OrgDetail(detail) = &app.data {
+        let header = Row::new(vec!["Repository", "Commits", "Lines", "PRs", "Contributors"])
+            .style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD));
+        
+        let rows: Vec<Row> = detail.repos.iter().enumerate().map(|(i, repo)| {
+            let style = if i == app.selected_index {
+                Style::default().bg(Color::DarkGray).fg(Color::White)
+            } else {
+                Style::default()
+            };
+            
+            Row::new(vec![
+                Cell::from(repo.repo_name.clone()),
+                Cell::from(format_number(repo.commits)),
+                Cell::from(format_number(repo.lines)),
+                Cell::from(format_number(repo.prs)),
+                Cell::from(format_number(repo.contributor_count)),
+            ]).style(style)
+        }).collect();
+
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Percentage(30), // Repository
+                Constraint::Percentage(20), // Commits
+                Constraint::Percentage(20), // Lines
+                Constraint::Percentage(15), // PRs
+                Constraint::Percentage(15), // Contributors
+            ]
+        )
+        .header(header)
+        .block(Block::default().borders(Borders::ALL).title(format!("Repositories in {}", detail.org_name)));
+
+        f.render_widget(table, area);
+    }
+}
+
+fn draw_repo_detail_table(f: &mut Frame, area: Rect, app: &App) {
+    if let ViewData::RepoDetail(detail) = &app.data {
+        let header = Row::new(vec!["Contributor", "Commits", "Lines", "PRs"])
+            .style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD));
+        
+        let rows: Vec<Row> = detail.contributors.iter().enumerate().map(|(i, contributor)| {
+            let style = if i == app.selected_index {
+                Style::default().bg(Color::DarkGray).fg(Color::White)
+            } else {
+                Style::default()
+            };
+            
+            Row::new(vec![
+                Cell::from(contributor.username.clone()),
+                Cell::from(format_number(contributor.commits)),
+                Cell::from(format_number(contributor.lines)),
+                Cell::from(format_number(contributor.prs)),
+            ]).style(style)
+        }).collect();
+
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Percentage(30), // Contributor
+                Constraint::Percentage(25), // Commits
+                Constraint::Percentage(25), // Lines
+                Constraint::Percentage(20), // PRs
+            ]
+        )
+        .header(header)
+        .block(Block::default().borders(Borders::ALL).title(format!("Contributors to {}/{}", detail.org_name, detail.repo_name)));
+
+        f.render_widget(table, area);
+    }
+}
+
+fn draw_contributor_detail_table(f: &mut Frame, area: Rect, app: &App) {
+    if let ViewData::ContributorDetail(detail) = &app.data {
+        let header = Row::new(vec!["Repository", "Commits", "Lines", "PRs"])
+            .style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD));
+        
+        let rows: Vec<Row> = detail.contributions.iter().enumerate().map(|(i, contribution)| {
+            let style = if i == app.selected_index {
+                Style::default().bg(Color::DarkGray).fg(Color::White)
+            } else {
+                Style::default()
+            };
+            
+            let repo_display = format!("{}/{}", contribution.org_name, contribution.repo_name);
+            
+            Row::new(vec![
+                Cell::from(repo_display),
+                Cell::from(format_number(contribution.commits)),
+                Cell::from(format_number(contribution.lines)),
+                Cell::from(format_number(contribution.prs)),
+            ]).style(style)
+        }).collect();
+
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Percentage(40), // Repository
+                Constraint::Percentage(20), // Commits
+                Constraint::Percentage(20), // Lines
+                Constraint::Percentage(20), // PRs
+            ]
+        )
+        .header(header)
+        .block(Block::default().borders(Borders::ALL).title(format!("Contributions by {}", detail.username)));
+
+        f.render_widget(table, area);
+    }
 }

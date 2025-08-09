@@ -609,3 +609,102 @@ pub async fn get_contributor_stats(pool_con: &mut PoolConn, scrape_id: i64) -> R
 
     Ok(contributor_stats)
 }
+
+// Detail view queries for drill-down functionality
+
+pub async fn get_org_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: &str) -> Result<crate::stats::OrgDetail> {
+    // Get all repos for this organization
+    let repo_rows: Vec<(String, String, i64, i64, i64, i64)> = query_as("
+        SELECT 
+            o.name as org_name,
+            r.name as repo_name,
+            rs.commits,
+            rs.lines_of_code,
+            rs.prs,
+            COUNT(DISTINCT cs.contributor_id) as contributor_count
+        FROM orgs o
+        JOIN repo_scrapes rs ON o.id = rs.org_id
+        JOIN repos r ON rs.repo_id = r.id
+        LEFT JOIN contributor_scrapes cs ON rs.id = cs.repo_scrape_id
+        WHERE rs.scrape_id = $1 AND o.name = $2
+        GROUP BY o.name, r.name, rs.commits, rs.lines_of_code, rs.prs
+        ORDER BY rs.commits DESC;
+    ").bind(scrape_id).bind(org_name).fetch_all(pool_con.as_mut()).await?;
+
+    let repos = repo_rows.into_iter().map(|row| crate::stats::RepoStats {
+        org_name: row.0,
+        repo_name: row.1,
+        commits: row.2,
+        lines: row.3,
+        prs: row.4,
+        contributor_count: row.5,
+    }).collect();
+
+    Ok(crate::stats::OrgDetail {
+        org_name: org_name.to_string(),
+        repos,
+    })
+}
+
+pub async fn get_repo_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: &str, repo_name: &str) -> Result<crate::stats::RepoDetail> {
+    // Get all contributors for this specific repository
+    let contributor_rows: Vec<(String, i64, i64, i64)> = query_as("
+        SELECT 
+            c.username,
+            cs.commits,
+            cs.lines_of_code,
+            cs.prs
+        FROM contributors c
+        JOIN contributor_scrapes cs ON c.id = cs.contributor_id
+        JOIN repo_scrapes rs ON cs.repo_scrape_id = rs.id
+        JOIN repos r ON rs.repo_id = r.id
+        JOIN orgs o ON rs.org_id = o.id
+        WHERE rs.scrape_id = $1 AND o.name = $2 AND r.name = $3
+        ORDER BY cs.commits DESC;
+    ").bind(scrape_id).bind(org_name).bind(repo_name).fetch_all(pool_con.as_mut()).await?;
+
+    let contributors = contributor_rows.into_iter().map(|row| crate::stats::RepoContributor {
+        username: row.0,
+        commits: row.1,
+        lines: row.2,
+        prs: row.3,
+    }).collect();
+
+    Ok(crate::stats::RepoDetail {
+        org_name: org_name.to_string(),
+        repo_name: repo_name.to_string(),
+        contributors,
+    })
+}
+
+pub async fn get_contributor_detail(pool_con: &mut PoolConn, scrape_id: i64, username: &str) -> Result<crate::stats::ContributorDetail> {
+    // Get all repositories this contributor worked on
+    let contribution_rows: Vec<(String, String, i64, i64, i64)> = query_as("
+        SELECT 
+            o.name as org_name,
+            r.name as repo_name,
+            cs.commits,
+            cs.lines_of_code,
+            cs.prs
+        FROM contributors c
+        JOIN contributor_scrapes cs ON c.id = cs.contributor_id
+        JOIN repo_scrapes rs ON cs.repo_scrape_id = rs.id
+        JOIN repos r ON rs.repo_id = r.id
+        JOIN orgs o ON rs.org_id = o.id
+        WHERE rs.scrape_id = $1 AND c.username = $2
+        ORDER BY cs.commits DESC;
+    ").bind(scrape_id).bind(username).fetch_all(pool_con.as_mut()).await?;
+
+    let contributions = contribution_rows.into_iter().map(|row| crate::stats::ContributorRepo {
+        org_name: row.0,
+        repo_name: row.1,
+        commits: row.2,
+        lines: row.3,
+        prs: row.4,
+    }).collect();
+
+    Ok(crate::stats::ContributorDetail {
+        username: username.to_string(),
+        contributions,
+    })
+}
