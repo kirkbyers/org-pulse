@@ -1,3 +1,8 @@
+//! TUI rendering and UI components
+//! 
+//! This module handles all the user interface rendering including tables, headers,
+//! footers, and different view layouts for the interactive terminal application.
+
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -35,7 +40,7 @@ pub fn ui(f: &mut Frame, app: &App) {
 
 fn draw_header(f: &mut Frame, area: Rect, app: &App) {
     let scrape_info = match app.current_scrape {
-        Some(id) => format!("Scrape ID: {}", id),
+        Some(id) => format!("Scrape ID: {id}"),
         None => "No scrape selected".to_string(),
     };
     
@@ -71,12 +76,12 @@ fn draw_header(f: &mut Frame, area: Rect, app: &App) {
     let status_text = if app.is_scraping {
         " | 🔄 SCRAPING..."
     } else if let Some(error) = &app.scraping_error {
-        &format!(" | ❌ ERROR: {}", error)
+        &format!(" | ❌ ERROR: {error}")
     } else {
         ""
     };
 
-    let header_text = format!("{} | {}{}{}", scrape_info, view_name, selection_info, status_text);
+    let header_text = format!("{scrape_info} | {view_name}{selection_info}{status_text}");
     let header = Paragraph::new(header_text)
         .block(Block::default().borders(Borders::ALL).title("org-pulse TUI"))
         .alignment(Alignment::Center);
@@ -105,7 +110,7 @@ fn draw_main_content(f: &mut Frame, area: Rect, app: &App) {
                 f.render_widget(loading, area);
             }
             ViewData::Error(msg) => {
-                let error_text = format!("❌ Error\n\n{}\n\nPress F5 to retry or switch to a different view", msg);
+                let error_text = format!("❌ Error\n\n{msg}\n\nPress F5 to retry or switch to a different view");
                 let error = Paragraph::new(error_text)
                     .block(Block::default().borders(Borders::ALL).title("Error"))
                     .style(Style::default().fg(Color::Red))
@@ -349,9 +354,9 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     } else {
         "Navigation: ↑↓/j/k | Enter: Drill Down | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | S: New Scrape | F5: Refresh | q: Quit"
     };
-    let footer_line2 = format!("{}", sort_info);
+    let footer_line2 = sort_info.to_string();
     
-    let footer_text = format!("{}\n{}", footer_line1, footer_line2);
+    let footer_text = format!("{footer_line1}\n{footer_line2}");
     let footer = Paragraph::new(footer_text)
         .block(Block::default().borders(Borders::ALL))
         .alignment(Alignment::Left);

@@ -1,3 +1,8 @@
+//! Application state management for the TUI
+//! 
+//! This module handles all application state including current view, selected items,
+//! scrape data management, and navigation between different views and detail screens.
+
 use crate::stats::{ViewData, ScrapeInfo, OrgStats, RepoStats, ContributorStats};
 use crate::db::{new_pool, Scrape, get_org_stats, get_repo_stats, get_contributor_stats, get_org_detail, get_repo_detail, get_contributor_detail};
 use crate::scraper;
@@ -11,6 +16,10 @@ enum DrillType {
 }
 
 #[derive(Debug, Clone)]
+/// Main application state that manages all TUI state and data
+/// 
+/// This struct holds the current view, loaded data, navigation state,
+/// and handles all user interactions and async operations.
 pub struct App {
     pub current_view: View,
     pub current_scrape: Option<i64>,
@@ -236,7 +245,7 @@ impl App {
                     self.apply_sort();
                 }
                 Err(e) => {
-                    self.set_error(format!("Failed to refresh view data: {}", e));
+                    self.set_error(format!("Failed to refresh view data: {e}"));
                 }
             }
         } else {
@@ -318,7 +327,7 @@ impl App {
         Ok(())
     }
 
-    fn sort_orgs_static(orgs: &mut Vec<OrgStats>, sort_field: SortField, sort_order: SortOrder) {
+    fn sort_orgs_static(orgs: &mut [OrgStats], sort_field: SortField, sort_order: SortOrder) {
         match sort_field {
             SortField::Name => {
                 orgs.sort_by(|a, b| match sort_order {
@@ -354,7 +363,7 @@ impl App {
         }
     }
 
-    fn sort_repos_static(repos: &mut Vec<RepoStats>, sort_field: SortField, sort_order: SortOrder) {
+    fn sort_repos_static(repos: &mut [RepoStats], sort_field: SortField, sort_order: SortOrder) {
         match sort_field {
             SortField::Name => {
                 repos.sort_by(|a, b| match sort_order {
@@ -390,7 +399,7 @@ impl App {
         }
     }
 
-    fn sort_contributors_static(contributors: &mut Vec<ContributorStats>, sort_field: SortField, sort_order: SortOrder) {
+    fn sort_contributors_static(contributors: &mut [ContributorStats], sort_field: SortField, sort_order: SortOrder) {
         match sort_field {
             SortField::Name => {
                 contributors.sort_by(|a, b| match sort_order {
@@ -426,7 +435,7 @@ impl App {
         }
     }
 
-    fn sort_repo_contributors_static(contributors: &mut Vec<crate::stats::RepoContributor>, sort_field: SortField, sort_order: SortOrder) {
+    fn sort_repo_contributors_static(contributors: &mut [crate::stats::RepoContributor], sort_field: SortField, sort_order: SortOrder) {
         match sort_field {
             SortField::Name => {
                 contributors.sort_by(|a, b| match sort_order {
@@ -462,7 +471,7 @@ impl App {
         }
     }
 
-    fn sort_contributor_repos_static(contributions: &mut Vec<crate::stats::ContributorRepo>, sort_field: SortField, sort_order: SortOrder) {
+    fn sort_contributor_repos_static(contributions: &mut [crate::stats::ContributorRepo], sort_field: SortField, sort_order: SortOrder) {
         match sort_field {
             SortField::Name => {
                 contributions.sort_by(|a, b| match sort_order {
@@ -567,7 +576,7 @@ impl App {
                     self.refresh_after_scrape().await?;
                 }
                 Err(e) => {
-                    self.finish_scraping_error(format!("Scrape failed: {}", e));
+                    self.finish_scraping_error(format!("Scrape failed: {e}"));
                 }
             }
         }

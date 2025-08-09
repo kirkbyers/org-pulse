@@ -15,7 +15,7 @@ impl Github {
         }
     }
 
-    pub async fn get_repo_commits(self: &Self, org: &str, repo: &str, since: DateTime<Utc>) -> Result<Page<RepoCommit>> {
+    pub async fn get_repo_commits(&self, org: &str, repo: &str, since: DateTime<Utc>) -> Result<Page<RepoCommit>> {
         let repo_details = self.client.repos(org, repo);
         return match repo_details
             .list_commits()
@@ -43,7 +43,7 @@ impl Github {
             };
     }
 
-    pub async fn get_repo_prs (self: &Self, org: &str, repo: &str, since: DateTime<Utc>) -> Result<Vec<PullRequest>> {
+    pub async fn get_repo_prs (&self, org: &str, repo: &str, since: DateTime<Utc>) -> Result<Vec<PullRequest>> {
         let repo_details = self.client.pulls(org, repo)
             .list()
             .state(octocrab::params::State::All)
@@ -71,7 +71,7 @@ impl Github {
         Ok(res)
     }
 
-    pub async fn get_org_repos_by_page(self: &Self, org: &str, per_page: &u8, page: &u32) -> Result<Page<Repository>> {
+    pub async fn get_org_repos_by_page(&self, org: &str, per_page: &u8, page: &u32) -> Result<Page<Repository>> {
         return self.client.orgs(org)
                     .list_repos()
                     .sort(octocrab::params::repos::Sort::Updated)
@@ -81,7 +81,7 @@ impl Github {
                     .send().await.map_err(|e| e.into())
     }
 
-    pub async fn get_orgs(self: &Self) -> Result<Page<MembershipInvitation>> {
+    pub async fn get_orgs(&self) -> Result<Page<MembershipInvitation>> {
         return self.client.current()
             .list_org_memberships_for_authenticated_user()
             .send()

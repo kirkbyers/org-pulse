@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
 use octocrab::models::{pulls::PullRequest, repos::RepoCommit};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
-use sqlx::{pool::PoolConnection, query_as, Sqlite};
 
 #[derive(Debug)]
 pub struct Scrape {
@@ -16,14 +14,13 @@ pub struct Scrape {
     pub commits: u64,
     pub prs: u64,
     pub lines: u64,
-    db_connection: PoolConnection<Sqlite>,
 }
 
 impl Scrape {
     // NOTE: This struct is deprecated in favor of using db.rs patterns directly
     // Kept for compatibility but should not be used in new code
 
-    pub fn process_commit(self: &mut Self, commit: &RepoCommit) -> Result<()> {
+    pub fn process_commit(&mut self, commit: &RepoCommit) -> Result<()> {
         // The only info we can get from this struct is author
         let commit_author = match &commit.author {
             Some(author) => author.login.clone(),
@@ -31,7 +28,7 @@ impl Scrape {
         };
 
         // Skip if username is in user ignore regex
-        let user_ignore_regex = Regex::new(&format!(r"{}", &self.ignored_user_patterns))?;
+        let user_ignore_regex = Regex::new(&self.ignored_user_patterns.to_string())?;
         if let Some(_mat) = user_ignore_regex.find(&commit_author) {
             return Ok(());
         }
@@ -46,13 +43,13 @@ impl Scrape {
         Ok(())
     }
 
-    pub fn process_pr(self: &mut Self, pr: &PullRequest) -> Result<()> {
+    pub fn process_pr(&mut self, pr: &PullRequest) -> Result<()> {
         let author = match pr.user.clone() {
             Some(auth) => auth.login,
             None => "anonymous".to_string()
         };
         // Skip if username is in user ignore regex
-        let user_ignore_regex = Regex::new(&format!(r"{}", &self.ignored_user_patterns))?;
+        let user_ignore_regex = Regex::new(&self.ignored_user_patterns.to_string())?;
         if let Some(_mat) = user_ignore_regex.find(&author) {
             return Ok(());
         }

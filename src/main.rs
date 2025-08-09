@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
                 LeaveAlternateScreen,
                 DisableMouseCapture
             )?;
-            eprintln!("Failed to initialize app with data: {}", e);
+            eprintln!("Failed to initialize app with data: {e}");
             return Ok(());
         }
     };
@@ -61,23 +61,21 @@ async fn run_tui<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
         }
 
         // Handle events (input errors are generally non-recoverable)
-        if let Err(e) = handle_events(app) {
-            return Err(e);
-        }
+        handle_events(app)?;
 
         // Handle scraping requests - errors should be captured and displayed
         if let Err(e) = app.handle_scraping_request().await {
-            app.set_error(format!("Scraping error: {}", e));
+            app.set_error(format!("Scraping error: {e}"));
         }
 
         // Handle navigation requests - errors should be captured and displayed
         if let Err(e) = app.handle_navigation_requests().await {
-            app.set_error(format!("Navigation error: {}", e));
+            app.set_error(format!("Navigation error: {e}"));
         }
 
         // Handle pending view switches - errors should be captured and displayed
         if let Err(e) = app.handle_pending_view_switch().await {
-            app.set_error(format!("View switch error: {}", e));
+            app.set_error(format!("View switch error: {e}"));
         }
 
         // Check if we should quit

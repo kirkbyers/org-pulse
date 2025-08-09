@@ -56,7 +56,7 @@ impl Org {
         Ok(Org { id, name })
     }
 
-    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+    pub async fn save(&self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE orgs
             set name = $1
@@ -107,7 +107,7 @@ impl Contributor {
         Ok(Contributor { id, username })
     }
 
-    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+    pub async fn save(&self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE contributors
             set username = $1
@@ -163,7 +163,7 @@ impl Repo {
         Ok(Repo { id, name, org })
     }
 
-    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+    pub async fn save(&self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE repos
             set name = $1, org_id = $2
@@ -209,7 +209,7 @@ impl Scrape {
                 SELECT id, repo_scrape_id, contributor_id, commits, lines
                 FROM contributor_scrapes cs
                 WHERE cs.repo_scrape_id = $1;
-            ").bind(&row.0).fetch_all(pool_con.as_mut()).await?;
+            ").bind(row.0).fetch_all(pool_con.as_mut()).await?;
 
             let mut contributor_scrapes = Vec::new();
             for cs_row in contributor_scrape_rows {
@@ -247,8 +247,8 @@ impl Scrape {
             VALUES ($1, $2)
             RETURNING id
         ")
-            .bind(&start_dt)
-            .bind(&end_dt)
+            .bind(start_dt)
+            .bind(end_dt)
             .fetch_one(pool_con.as_mut())
             .await?;
         
@@ -262,14 +262,14 @@ impl Scrape {
         })
     }
 
-    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+    pub async fn save(&self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE scrapes
             set start_dt = $1, end_dt = $2
             where id = $3
         ")
-            .bind(&self.start_dt)
-            .bind(&self.end_dt)
+            .bind(self.start_dt)
+            .bind(self.end_dt)
             .bind(self.id)
             .execute(pool_con.as_mut())
             .await?;
@@ -415,7 +415,7 @@ impl RepoScrape {
         })
     }
 
-    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+    pub async fn save(&self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE repo_scrapes
             set org_id = $1, repo_id = $2, commits = $3, prs = $4, lines = $5
@@ -487,7 +487,7 @@ impl ContributorScrapes {
         })
     }
 
-    pub async fn save(self: &Self, pool_con: &mut PoolConn) -> Result<()> {
+    pub async fn save(&self, pool_con: &mut PoolConn) -> Result<()> {
         let _res = query("
             UPDATE contributor_scrapes
             set contributor_id = $1, commits = $2, lines = $3

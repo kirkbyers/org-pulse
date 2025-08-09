@@ -10,8 +10,6 @@ use crate::{config::get_config, db::{new_pool, Org, Repo, Scrape, RepoScrape, Co
 // Temporary data structure to collect scrape data before saving to DB
 #[derive(Debug)]
 struct TempRepoScrape {
-    org_name: String,
-    repo_name: String,
     contributors: HashMap<String, TempContributorData>,
     total_commits: i64,
     total_prs: i64,
@@ -26,10 +24,8 @@ struct TempContributorData {
 }
 
 impl TempRepoScrape {
-    fn new(org_name: &str, repo_name: &str) -> Self {
+    fn new(_org_name: &str, _repo_name: &str) -> Self {
         Self {
-            org_name: org_name.to_string(),
-            repo_name: repo_name.to_string(),
             contributors: HashMap::new(),
             total_commits: 0,
             total_prs: 0,
@@ -98,8 +94,8 @@ pub async fn run_scrape() -> Result<()> {
     let gh = Github::new(&github_token);
 
     let orgs = gh.get_orgs().await?;
-    let org_ignore_regex = Regex::new(&format!(r"{}", &cfg.ignored_org_pattern))?;
-    let user_ignore_regex = Regex::new(&format!(r"{}", &cfg.ignored_user_patterns))?;
+    let org_ignore_regex = Regex::new(&cfg.ignored_org_pattern.to_string())?;
+    let user_ignore_regex = Regex::new(&cfg.ignored_user_patterns.to_string())?;
     
     // Create a new scrape session
     let start_time = Utc::now() - Duration::days(7);
