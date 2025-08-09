@@ -105,10 +105,12 @@ fn draw_main_content(f: &mut Frame, area: Rect, app: &App) {
                 f.render_widget(loading, area);
             }
             ViewData::Error(msg) => {
-                let error = Paragraph::new(format!("Error: {}", msg))
-                    .block(Block::default().borders(Borders::ALL))
+                let error_text = format!("❌ Error\n\n{}\n\nPress F5 to retry or switch to a different view", msg);
+                let error = Paragraph::new(error_text)
+                    .block(Block::default().borders(Borders::ALL).title("Error"))
                     .style(Style::default().fg(Color::Red))
-                    .alignment(Alignment::Center);
+                    .alignment(Alignment::Center)
+                    .wrap(ratatui::widgets::Wrap { trim: true });
                 f.render_widget(error, area);
             }
             ViewData::Orgs(_) => draw_org_table(f, area, app),
@@ -343,9 +345,9 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     let footer_line1 = if app.current_view == View::ScrapeSelection {
         "Navigation: ↑↓/j/k | Enter: Select | Esc/t: Back | q: Quit"
     } else if matches!(app.current_view, View::OrgDetail | View::RepoDetail | View::ContributorDetail) {
-        "Navigation: ↑↓/j/k | Enter: Drill Down | Esc: Back | Sort: s/n/c/l/p/R | q: Quit"
+        "Navigation: ↑↓/j/k | Enter: Drill Down | Esc: Back | Sort: s/n/c/l/p/R | F5: Refresh | q: Quit"
     } else {
-        "Navigation: ↑↓/j/k | Enter: Drill Down | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | S: New Scrape | q: Quit"
+        "Navigation: ↑↓/j/k | Enter: Drill Down | Views: o/r/u | t: Scrapes | Sort: s/n/c/l/p/R | S: New Scrape | F5: Refresh | q: Quit"
     };
     let footer_line2 = format!("{}", sort_info);
     
@@ -399,7 +401,7 @@ fn draw_org_detail_table(f: &mut Frame, area: Rect, app: &App) {
 
 fn draw_repo_detail_table(f: &mut Frame, area: Rect, app: &App) {
     if let ViewData::RepoDetail(detail) = &app.data {
-        let header = Row::new(vec!["Contributor", "Commits", "Lines", "PRs"])
+        let header = Row::new(vec!["Contributor", "Commits", "Lines"])
             .style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD));
         
         let rows: Vec<Row> = detail.contributors.iter().enumerate().map(|(i, contributor)| {
@@ -413,17 +415,15 @@ fn draw_repo_detail_table(f: &mut Frame, area: Rect, app: &App) {
                 Cell::from(contributor.username.clone()),
                 Cell::from(format_number(contributor.commits)),
                 Cell::from(format_number(contributor.lines)),
-                Cell::from(format_number(contributor.prs)),
             ]).style(style)
         }).collect();
 
         let table = Table::new(
             rows,
             [
-                Constraint::Percentage(30), // Contributor
-                Constraint::Percentage(25), // Commits
-                Constraint::Percentage(25), // Lines
-                Constraint::Percentage(20), // PRs
+                Constraint::Percentage(40), // Contributor
+                Constraint::Percentage(30), // Commits
+                Constraint::Percentage(30), // Lines
             ]
         )
         .header(header)
@@ -435,7 +435,7 @@ fn draw_repo_detail_table(f: &mut Frame, area: Rect, app: &App) {
 
 fn draw_contributor_detail_table(f: &mut Frame, area: Rect, app: &App) {
     if let ViewData::ContributorDetail(detail) = &app.data {
-        let header = Row::new(vec!["Repository", "Commits", "Lines", "PRs"])
+        let header = Row::new(vec!["Repository", "Commits", "Lines"])
             .style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD));
         
         let rows: Vec<Row> = detail.contributions.iter().enumerate().map(|(i, contribution)| {
@@ -451,17 +451,15 @@ fn draw_contributor_detail_table(f: &mut Frame, area: Rect, app: &App) {
                 Cell::from(repo_display),
                 Cell::from(format_number(contribution.commits)),
                 Cell::from(format_number(contribution.lines)),
-                Cell::from(format_number(contribution.prs)),
             ]).style(style)
         }).collect();
 
         let table = Table::new(
             rows,
             [
-                Constraint::Percentage(40), // Repository
-                Constraint::Percentage(20), // Commits
-                Constraint::Percentage(20), // Lines
-                Constraint::Percentage(20), // PRs
+                Constraint::Percentage(50), // Repository
+                Constraint::Percentage(25), // Commits
+                Constraint::Percentage(25), // Lines
             ]
         )
         .header(header)

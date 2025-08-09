@@ -619,7 +619,7 @@ pub async fn get_org_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: &
             o.name as org_name,
             r.name as repo_name,
             rs.commits,
-            rs.lines_of_code,
+            rs.lines,
             rs.prs,
             COUNT(DISTINCT cs.contributor_id) as contributor_count
         FROM orgs o
@@ -627,7 +627,7 @@ pub async fn get_org_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: &
         JOIN repos r ON rs.repo_id = r.id
         LEFT JOIN contributor_scrapes cs ON rs.id = cs.repo_scrape_id
         WHERE rs.scrape_id = $1 AND o.name = $2
-        GROUP BY o.name, r.name, rs.commits, rs.lines_of_code, rs.prs
+        GROUP BY o.name, r.name, rs.commits, rs.lines, rs.prs
         ORDER BY rs.commits DESC;
     ").bind(scrape_id).bind(org_name).fetch_all(pool_con.as_mut()).await?;
 
@@ -648,12 +648,11 @@ pub async fn get_org_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: &
 
 pub async fn get_repo_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: &str, repo_name: &str) -> Result<crate::stats::RepoDetail> {
     // Get all contributors for this specific repository
-    let contributor_rows: Vec<(String, i64, i64, i64)> = query_as("
+    let contributor_rows: Vec<(String, i64, i64)> = query_as("
         SELECT 
             c.username,
             cs.commits,
-            cs.lines_of_code,
-            cs.prs
+            cs.lines
         FROM contributors c
         JOIN contributor_scrapes cs ON c.id = cs.contributor_id
         JOIN repo_scrapes rs ON cs.repo_scrape_id = rs.id
@@ -667,7 +666,7 @@ pub async fn get_repo_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: 
         username: row.0,
         commits: row.1,
         lines: row.2,
-        prs: row.3,
+        prs: 0, // PRs not tracked at contributor level
     }).collect();
 
     Ok(crate::stats::RepoDetail {
@@ -679,13 +678,12 @@ pub async fn get_repo_detail(pool_con: &mut PoolConn, scrape_id: i64, org_name: 
 
 pub async fn get_contributor_detail(pool_con: &mut PoolConn, scrape_id: i64, username: &str) -> Result<crate::stats::ContributorDetail> {
     // Get all repositories this contributor worked on
-    let contribution_rows: Vec<(String, String, i64, i64, i64)> = query_as("
+    let contribution_rows: Vec<(String, String, i64, i64)> = query_as("
         SELECT 
             o.name as org_name,
             r.name as repo_name,
             cs.commits,
-            cs.lines_of_code,
-            cs.prs
+            cs.lines
         FROM contributors c
         JOIN contributor_scrapes cs ON c.id = cs.contributor_id
         JOIN repo_scrapes rs ON cs.repo_scrape_id = rs.id
@@ -700,7 +698,7 @@ pub async fn get_contributor_detail(pool_con: &mut PoolConn, scrape_id: i64, use
         repo_name: row.1,
         commits: row.2,
         lines: row.3,
-        prs: row.4,
+        prs: 0, // PRs not tracked at contributor level
     }).collect();
 
     Ok(crate::stats::ContributorDetail {

@@ -54,20 +54,31 @@ async fn main() -> Result<()> {
 
 async fn run_tui<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
     loop {
-        // Draw UI
-        terminal.draw(|f| ui(f, app))?;
+        // Draw UI (this should always work)
+        if let Err(e) = terminal.draw(|f| ui(f, app)) {
+            // If UI drawing fails, we need to exit as the terminal is likely corrupted
+            return Err(e.into());
+        }
 
-        // Handle events
-        handle_events(app)?;
+        // Handle events (input errors are generally non-recoverable)
+        if let Err(e) = handle_events(app) {
+            return Err(e);
+        }
 
-        // Handle scraping requests
-        app.handle_scraping_request().await?;
+        // Handle scraping requests - errors should be captured and displayed
+        if let Err(e) = app.handle_scraping_request().await {
+            app.set_error(format!("Scraping error: {}", e));
+        }
 
-        // Handle navigation requests
-        app.handle_navigation_requests().await?;
+        // Handle navigation requests - errors should be captured and displayed
+        if let Err(e) = app.handle_navigation_requests().await {
+            app.set_error(format!("Navigation error: {}", e));
+        }
 
-        // Handle pending view switches
-        app.handle_pending_view_switch().await?;
+        // Handle pending view switches - errors should be captured and displayed
+        if let Err(e) = app.handle_pending_view_switch().await {
+            app.set_error(format!("View switch error: {}", e));
+        }
 
         // Check if we should quit
         if app.should_quit {

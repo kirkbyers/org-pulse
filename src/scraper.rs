@@ -88,6 +88,8 @@ impl TempRepoScrape {
     }
 }
 
+/// Runs a complete scrape of GitHub organizations and repositories.
+/// This function runs silently to avoid interfering with TUI display.
 pub async fn run_scrape() -> Result<()> {
     let db_pool = new_pool().await?;
     migrate!().run(&db_pool).await?;
@@ -171,16 +173,12 @@ pub async fn run_scrape() -> Result<()> {
                     ).await?;
                 }
 
-                println!("Processed repo: {}/{} - {} commits, {} PRs, {} lines", 
-                         org.organization.login, repo.name, 
-                         temp_repo_scrape.total_commits, 
-                         temp_repo_scrape.total_prs, 
-                         temp_repo_scrape.total_lines);
+                // Repo processing completed silently to avoid TUI interference
             }
             page += 1;
         }
     }
     
-    println!("Scrape completed with ID: {}", scrape.id);
+    // Scrape completed silently to avoid TUI interference
     Ok(())
 }

@@ -27,6 +27,7 @@ pub struct App {
     pub start_scraping_requested: bool,
     pub drill_down_requested: bool,
     pub navigate_back_requested: bool,
+    pub refresh_requested: bool,
     pub view_history: Vec<(View, String)>, // (view, context) for back navigation
 }
 
@@ -74,6 +75,7 @@ impl Default for App {
             start_scraping_requested: false,
             drill_down_requested: false,
             navigate_back_requested: false,
+            refresh_requested: false,
             view_history: Vec::new(),
         }
     }
@@ -226,36 +228,62 @@ impl App {
 
     pub async fn refresh_current_view_data(&mut self) -> Result<()> {
         if let Some(scrape_id) = self.current_scrape {
-            let db_pool = new_pool().await?;
-            let mut db_conn = db_pool.acquire().await?;
-
-            match self.current_view {
-                View::Org => {
-                    let org_stats = get_org_stats(&mut db_conn, scrape_id).await?;
-                    self.data = ViewData::Orgs(org_stats);
+            self.data = ViewData::Loading;
+            
+            match self.load_view_data(scrape_id).await {
+                Ok(view_data) => {
+                    self.data = view_data;
+                    self.apply_sort();
                 }
-                View::Repo => {
-                    let repo_stats = get_repo_stats(&mut db_conn, scrape_id).await?;
-                    self.data = ViewData::Repos(repo_stats);
-                }
-                View::Contributors => {
-                    let contributor_stats = get_contributor_stats(&mut db_conn, scrape_id).await?;
-                    self.data = ViewData::Contributors(contributor_stats);
-                }
-                View::ScrapeSelection => {
-                    // No data loading needed for scrape selection view
-                }
-                View::OrgDetail | View::RepoDetail | View::ContributorDetail => {
-                    // Detail views are loaded through drill-down, not refresh_current_view_data
-                    // This shouldn't be called for detail views, but we handle it gracefully
+                Err(e) => {
+                    self.set_error(format!("Failed to refresh view data: {}", e));
                 }
             }
-            // Apply current sort after loading data
-            self.apply_sort();
         } else {
-            self.data = ViewData::Error("No scrape selected".to_string());
+            self.set_error("No scrape selected. Please select a scrape first.".to_string());
         }
         Ok(())
+    }
+
+    async fn load_view_data(&self, scrape_id: i64) -> Result<ViewData> {
+        let db_pool = new_pool().await
+            .map_err(|e| anyhow::anyhow!("Database connection failed: {}", e))?;
+        let mut db_conn = db_pool.acquire().await
+            .map_err(|e| anyhow::anyhow!("Failed to acquire database connection: {}", e))?;
+
+        match self.current_view {
+            View::Org => {
+                let org_stats = get_org_stats(&mut db_conn, scrape_id).await
+                    .map_err(|e| anyhow::anyhow!("Failed to load organization data: {}", e))?;
+                if org_stats.is_empty() {
+                    return Err(anyhow::anyhow!("No organization data found for this scrape"));
+                }
+                Ok(ViewData::Orgs(org_stats))
+            }
+            View::Repo => {
+                let repo_stats = get_repo_stats(&mut db_conn, scrape_id).await
+                    .map_err(|e| anyhow::anyhow!("Failed to load repository data: {}", e))?;
+                if repo_stats.is_empty() {
+                    return Err(anyhow::anyhow!("No repository data found for this scrape"));
+                }
+                Ok(ViewData::Repos(repo_stats))
+            }
+            View::Contributors => {
+                let contributor_stats = get_contributor_stats(&mut db_conn, scrape_id).await
+                    .map_err(|e| anyhow::anyhow!("Failed to load contributor data: {}", e))?;
+                if contributor_stats.is_empty() {
+                    return Err(anyhow::anyhow!("No contributor data found for this scrape"));
+                }
+                Ok(ViewData::Contributors(contributor_stats))
+            }
+            View::ScrapeSelection => {
+                // No data loading needed for scrape selection view
+                Ok(ViewData::Loading)
+            }
+            View::OrgDetail | View::RepoDetail | View::ContributorDetail => {
+                Err(anyhow::anyhow!("Detail views should not be refreshed through refresh_current_view_data"))
+            }
+        }
     }
 
     pub async fn switch_view_with_data(&mut self, view: View) -> Result<()> {
@@ -482,6 +510,20 @@ impl App {
         self.navigate_back_requested = true;
     }
 
+    pub fn request_refresh(&mut self) {
+        self.refresh_requested = true;
+    }
+
+    pub fn set_error(&mut self, error: String) {
+        self.data = ViewData::Error(error);
+        // Reset any pending operations
+        self.drill_down_requested = false;
+        self.navigate_back_requested = false;
+        self.start_scraping_requested = false;
+        self.refresh_requested = false;
+        self.is_scraping = false;
+    }
+
     pub fn start_scraping(&mut self) {
         self.is_scraping = true;
         self.scraping_error = None;
@@ -533,6 +575,10 @@ impl App {
     }
 
     pub async fn handle_navigation_requests(&mut self) -> Result<()> {
+        if self.refresh_requested {
+            self.refresh_requested = false;
+            self.refresh_current_view_data().await?;
+        }
         if self.drill_down_requested {
             self.drill_down_requested = false;
             self.drill_down().await?;
@@ -635,8 +681,15 @@ impl App {
     }
 
     async fn drill_into_org(&mut self, scrape_id: i64, org_name: &str) -> Result<()> {
-        let mut db_conn = self.get_db_connection().await?;
-        let detail = get_org_detail(&mut db_conn, scrape_id, org_name).await?;
+        let mut db_conn = self.get_db_connection().await
+            .map_err(|e| anyhow::anyhow!("Database connection failed: {}", e))?;
+        let detail = get_org_detail(&mut db_conn, scrape_id, org_name).await
+            .map_err(|e| anyhow::anyhow!("Failed to load organization '{}' details: {}", org_name, e))?;
+        
+        if detail.repos.is_empty() {
+            return Err(anyhow::anyhow!("No repositories found for organization '{}'", org_name));
+        }
+        
         self.data = ViewData::OrgDetail(detail);
         self.current_view = View::OrgDetail;
         self.selected_index = 0;
@@ -645,8 +698,15 @@ impl App {
     }
 
     async fn drill_into_repo(&mut self, scrape_id: i64, org_name: &str, repo_name: &str) -> Result<()> {
-        let mut db_conn = self.get_db_connection().await?;
-        let detail = get_repo_detail(&mut db_conn, scrape_id, org_name, repo_name).await?;
+        let mut db_conn = self.get_db_connection().await
+            .map_err(|e| anyhow::anyhow!("Database connection failed: {}", e))?;
+        let detail = get_repo_detail(&mut db_conn, scrape_id, org_name, repo_name).await
+            .map_err(|e| anyhow::anyhow!("Failed to load repository '{}/{}' details: {}", org_name, repo_name, e))?;
+        
+        if detail.contributors.is_empty() {
+            return Err(anyhow::anyhow!("No contributors found for repository '{}/{}'", org_name, repo_name));
+        }
+        
         self.data = ViewData::RepoDetail(detail);
         self.current_view = View::RepoDetail;
         self.selected_index = 0;
@@ -655,8 +715,15 @@ impl App {
     }
 
     async fn drill_into_contributor(&mut self, scrape_id: i64, username: &str) -> Result<()> {
-        let mut db_conn = self.get_db_connection().await?;
-        let detail = get_contributor_detail(&mut db_conn, scrape_id, username).await?;
+        let mut db_conn = self.get_db_connection().await
+            .map_err(|e| anyhow::anyhow!("Database connection failed: {}", e))?;
+        let detail = get_contributor_detail(&mut db_conn, scrape_id, username).await
+            .map_err(|e| anyhow::anyhow!("Failed to load contributor '{}' details: {}", username, e))?;
+        
+        if detail.contributions.is_empty() {
+            return Err(anyhow::anyhow!("No contributions found for contributor '{}'", username));
+        }
+        
         self.data = ViewData::ContributorDetail(detail);
         self.current_view = View::ContributorDetail;
         self.selected_index = 0;
@@ -665,7 +732,10 @@ impl App {
     }
 
     async fn get_db_connection(&self) -> Result<sqlx::pool::PoolConnection<sqlx::Sqlite>> {
-        let pool = new_pool().await?;
-        Ok(pool.acquire().await?)
+        let pool = new_pool().await
+            .map_err(|e| anyhow::anyhow!("Failed to initialize database pool: {}", e))?;
+        pool.acquire().await
+            .map_err(|e| anyhow::anyhow!("Failed to acquire database connection: {}", e))
     }
+
 }

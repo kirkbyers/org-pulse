@@ -41,6 +41,12 @@ fn handle_key_event(key: KeyEvent, app: &mut App) -> Result<()> {
         KeyCode::Char('o') => app.request_view_switch(View::Org),
         KeyCode::Char('r') => app.request_view_switch(View::Repo),
         KeyCode::Char('u') => app.request_view_switch(View::Contributors),
+        KeyCode::F(5) => {
+            // Retry/refresh current view with F5
+            if !matches!(app.current_view, View::ScrapeSelection) && !app.is_scraping {
+                app.request_refresh();
+            }
+        }
         KeyCode::Up | KeyCode::Char('k') => {
             if app.current_view == View::ScrapeSelection {
                 app.move_scrape_selection_up();
